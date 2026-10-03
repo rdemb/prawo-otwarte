@@ -1,5 +1,16 @@
 # Architektura 0.1
 
+## Wariant GitHub Pages
+
+Builder `scripts/build_pages.py` wybiera tylko publiczne zasoby strony i dodaje
+`pages.js`. Ten adapter wysyła wyłącznie frazę wyszukiwania do ELI, z pominięciem
+cookies, a notatkę sprawy tworzy w pamięci przeglądarki. Widok jawnie informuje,
+że backend i BASAL nie są podłączone. Dane wywiadu i katalog źródeł pochodzą
+z tych samych definicji co aplikacja Python. Nie jest to symulacja odpowiedzi API.
+
+Kod aplikacji serwerowej nie ładuje `pages.js`: korzysta z własnego WSGI API.
+Strona używa względnych ścieżek do zasobów, również w podkatalogu repozytorium.
+
 ## Granice komponentów
 
 1. **Przeglądarka** — statyczny HTML/CSS/JS, bez zewnętrznych fontów, reklam,

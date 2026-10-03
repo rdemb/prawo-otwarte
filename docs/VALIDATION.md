@@ -40,3 +40,20 @@ Do repozytorium nie dołączono zaimportowanej bazy, prywatnych spraw ani raport
 
 Workflow `application-checks` uruchamia testy offline na Pythonie 3.12 i 3.13
 oraz sprawdza składnię JS. Bieżący wynik CI należy odczytywać w GitHub Actions.
+
+## Wariant statyczny GitHub Pages
+
+Po dodaniu wariantu Pages: 26 testów offline — PASS; sprawdzenie składni obu
+plików JavaScript — PASS. Builder publikuje tylko siedem dozwolonych zasobów,
+odrzuca katalog wyjściowy z obcą zawartością i używa względnych ścieżek.
+
+Test przeglądarki pod `/prawo-otwarte/`, desktop 1440×1050 i mobile 390×844:
+rzeczywiste wyszukiwanie w ELI (20 ze 110 wyników dla „Kodeks pracy”), odnośniki
+do źródła, ręczny wybór dziedziny i pobranie notatki — PASS. Rejestr żądań nie
+zawierał syntetycznego opisu sprawy ani wywołań backendu aplikacji. Brak błędów
+JS i poziomego przepełnienia widoku mobile. Model nie jest podłączony w Pages.
+
+Izolowana przeglądarka testowa wymagała pominięcia lokalnego błędu magazynu
+certyfikatów; kod strony nie wyłącza TLS. Niezależne połączenie curl z ELI
+przeszło weryfikację certyfikatu. Stan publicznego wdrożenia należy sprawdzić
+osobno w workflow `Publish website` po włączeniu GitHub Pages.
