@@ -83,3 +83,25 @@ nie przepisywano. Nie wykryto w nich poświadczeń wskazaną kontrolą wzorców.
 Sekcja BASAL opisuje rolę i autorstwo technologii na podstawie źródeł autora.
 Nie jest dowodem uruchomienia modelu. VPS i jego prace wdrożeniowe nie były
 w tej zmianie obsługiwane z tego środowiska.
+
+## Przygotowanie połączenia Pages z API — 2026-10-03
+
+- PR #4: sprawdzono zmiany, 32 testy lokalne i CI; scalono do `main`.
+- Po dodaniu opcjonalnego adresu API: 39 testów offline — PASS. Obejmują
+  domyślne wyłączenie połączenia, odrzucenie niewłaściwych adresów, preflight,
+  dokładny origin, błędne nagłówki/metody i dostępność błędów dla przeglądarki.
+- Chrome przez Playwright: rzeczywiste żądania między dwoma lokalnymi serwerami
+  HTTPS o różnych originach; ręczny wywiad, fallback przy wyłączonym modelu,
+  awaria API zachowująca opis w formularzu — PASS. Test używał syntetycznych
+  opisów oraz lokalnej konfiguracji QA, bez modelu właściciela.
+- Strona o niedozwolonym originie nie odczytała stanu; formularz nie wysłał
+  opisu. W domyślnym trybie statycznym opis również nie opuścił przeglądarki.
+- Brak błędów JS i poziomego przepełnienia przy szerokości 320 px.
+- HTTPS w QA używał tymczasowego certyfikatu własnego; pominięcie jego weryfikacji
+  dotyczyło tylko testowej przeglądarki. Kod produktu wymaga HTTPS. Produkcyjną
+  domenę i certyfikat należy potwierdzić z zewnątrz bez tego pominięcia.
+
+Nie włączono publicznego połączenia bez potwierdzonego adresu API. Nie wykonano
+tutaj testu VPS ani jego rzeczywistego modelu; wynik lokalnego CORS nie zastępuje
+testu całej ścieżki przez produkcyjny reverse proxy. Raporty z serwera pozostają
+poza publicznym repozytorium.

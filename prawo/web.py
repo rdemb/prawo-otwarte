@@ -5,7 +5,7 @@ import time
 from collections import OrderedDict, deque
 from datetime import date
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs
 
 from . import __version__
 from .cases import DOMAINS, BasalRouter, intake
@@ -77,6 +77,15 @@ class App:
                    ("X-Frame-Options","DENY"),("Cache-Control","no-store"),
                    ("Permissions-Policy","camera=(), microphone=(), geolocation=()"),
                    ("Content-Security-Policy","default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")]
+        if env.get("PATH_INFO", "").startswith("/api/"):
+            headers.append(("Vary", "Origin"))
+            origin = env.get("HTTP_ORIGIN")
+            if origin and self.origin_allowed(env):
+                headers.append(("Access-Control-Allow-Origin", origin))
+                if env.get("REQUEST_METHOD") == "OPTIONS":
+                    headers.extend([("Access-Control-Allow-Methods", "GET, POST"),
+                                    ("Access-Control-Allow-Headers", "Content-Type"),
+                                    ("Access-Control-Max-Age", "600")])
         try:
             status, data, mime = self.dispatch(env)
         except (ValueError, UnicodeError) as exc:
@@ -88,21 +97,35 @@ class App:
             status, data, mime = 500, {"error":"Wewnętrzny błąd aplikacji. Spróbuj ponownie później."}, "application/json"
         if mime == "application/json":
             data = json.dumps(data, ensure_ascii=False, allow_nan=False).encode()
-        headers.extend([("Content-Type",mime+"; charset=utf-8"),("Content-Length",str(len(data)))])
+        headers.append(("Content-Type",mime+"; charset=utf-8"))
+        if status != 204:
+            headers.append(("Content-Length",str(len(data))))
         if status == 429:
             headers.append(("Retry-After","60"))
-        reasons = {200:"OK",400:"Bad Request",403:"Forbidden",404:"Not Found",405:"Method Not Allowed",429:"Too Many Requests",500:"Internal Server Error",503:"Service Unavailable"}
+        reasons = {200:"OK",204:"No Content",400:"Bad Request",403:"Forbidden",404:"Not Found",405:"Method Not Allowed",429:"Too Many Requests",500:"Internal Server Error",503:"Service Unavailable"}
         start_response(f"{status} {reasons[status]}", headers)
         return [data]
+
+    def origin_allowed(self, env):
+        origin = env.get("HTTP_ORIGIN")
+        own_origin = env.get("wsgi.url_scheme", "http") + "://" + env.get("HTTP_HOST", "")
+        return origin == own_origin or origin in self.settings.allowed_origins
 
     def dispatch(self, env):
         path, method = env.get("PATH_INFO", "/"), env.get("REQUEST_METHOD","GET")
         if path.startswith("/api/"):
+            if env.get("HTTP_ORIGIN") and not self.origin_allowed(env):
+                return 403, {"error":"Niedozwolone pochodzenie żądania."}, "application/json"
+            if method == "OPTIONS":
+                methods = {"/api/status":"GET", "/api/search":"POST", "/api/act":"GET", "/api/intake":"POST"}
+                requested_headers = {value.strip().lower() for value in env.get("HTTP_ACCESS_CONTROL_REQUEST_HEADERS", "").split(",") if value.strip()}
+                if (not env.get("HTTP_ORIGIN") or path not in methods
+                        or env.get("HTTP_ACCESS_CONTROL_REQUEST_METHOD") != methods[path]
+                        or requested_headers - {"content-type"}):
+                    return 403, {"error":"Niedozwolone żądanie wstępne."}, "application/json"
+                return 204, b"", "text/plain"
             if not self.limiter.allow(env.get("REMOTE_ADDR","local")):
                 return 429, {"error":"Limit zapytań. Odczekaj minutę."}, "application/json"
-            origin = env.get("HTTP_ORIGIN")
-            if origin and urlsplit(origin).netloc != env.get("HTTP_HOST"):
-                return 403, {"error":"Niedozwolone pochodzenie żądania."}, "application/json"
             if path == "/api/status" and method == "GET":
                 return 200, {"version":__version__, "stage":"research_preview", "corpus":self.store.status(),
                              "sources":SOURCES,"recent":self.store.recent(),"domains":{k:v["label"] for k,v in DOMAINS.items()},

@@ -58,6 +58,55 @@ class WebTests(unittest.TestCase):
     def test_cross_origin_request_rejected(self):
         self.assertEqual(self.call('/api/intake',{},HTTP_ORIGIN='https://evil.example')[0],403)
 
+    def test_pages_preflight_and_json_post_allow_only_configured_origin(self):
+        origin = 'https://rdemb.github.io'
+        self.app.settings = replace(self.settings, allowed_origins=(origin,))
+        code,headers,body = self.call('/api/intake', REQUEST_METHOD='OPTIONS', HTTP_ORIGIN=origin,
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD='POST', HTTP_ACCESS_CONTROL_REQUEST_HEADERS='content-type')
+        self.assertEqual((code,body),(204,b''))
+        self.assertEqual(headers['Access-Control-Allow-Origin'], origin)
+        self.assertEqual(headers['Vary'], 'Origin')
+        self.assertNotIn('Access-Control-Allow-Credentials',headers)
+        code,headers,data = self.call('/api/intake', {'description':'Syntetyczny opis umowy o pracę.', 'domain':'work'}, HTTP_ORIGIN=origin)
+        self.assertEqual(code,200)
+        self.assertEqual(data['routing']['method'],'user')
+        self.assertEqual(headers['Access-Control-Allow-Origin'],origin)
+        for untrusted in ['null','http://rdemb.github.io','https://rdemb.github.io.evil.example','https://rdemb.github.io/prawo-otwarte']:
+            code,headers,_ = self.call('/api/status',HTTP_ORIGIN=untrusted)
+            self.assertEqual(code,403)
+            self.assertNotIn('Access-Control-Allow-Origin',headers)
+
+    def test_preflight_does_not_run_work_or_accept_arbitrary_headers(self):
+        self.app.settings = replace(self.settings, allowed_origins=('https://rdemb.github.io',))
+        self.app.router.classify = lambda _:self.fail('Preflight ran model')
+        origin = {'REQUEST_METHOD':'OPTIONS','HTTP_ORIGIN':'https://rdemb.github.io'}
+        for extra in [dict(HTTP_ACCESS_CONTROL_REQUEST_METHOD='DELETE'),
+                      dict(HTTP_ACCESS_CONTROL_REQUEST_METHOD='POST', HTTP_ACCESS_CONTROL_REQUEST_HEADERS='Authorization'),
+                      dict(HTTP_ACCESS_CONTROL_REQUEST_METHOD='POST', HTTP_ORIGIN='https://evil.example')]:
+            self.assertEqual(self.call('/api/intake', **{**origin,**extra})[0],403)
+
+    def test_cors_headers_preserved_on_errors_and_rate_limit(self):
+        origin = 'https://rdemb.github.io'
+        self.app.settings = replace(self.settings, allowed_origins=(origin,))
+        for payload,expected in [({'query':'a'},400), ({'query':'Kodeks','mode':'eli'},503)]:
+            code,headers,_ = self.call('/api/search',payload,HTTP_ORIGIN=origin)
+            self.assertEqual(code,expected)
+            self.assertEqual(headers['Access-Control-Allow-Origin'],origin)
+        for _ in range(30):
+            code,headers,_ = self.call('/api/status',HTTP_ORIGIN=origin)
+        self.assertEqual(code,429)
+        self.assertEqual(headers['Access-Control-Allow-Origin'],origin)
+
+    def test_same_origin_checks_scheme_and_port(self):
+        self.assertEqual(self.call('/api/status',HTTP_ORIGIN='http://localhost:8080')[0],200)
+        self.assertEqual(self.call('/api/status',HTTP_ORIGIN='https://localhost:8080')[0],403)
+        self.assertEqual(self.call('/api/status',HTTP_ORIGIN='http://localhost:8081')[0],403)
+
+    def test_invalid_origin_configuration_fails_at_startup(self):
+        for origin in ['*','null','http://rdemb.github.io','https://rdemb.github.io/','https://rdemb.github.io/prawo-otwarte','https://user:pass@api.example.org']:
+            with self.subTest(origin=origin),self.assertRaises(ValueError):
+                replace(self.settings,allowed_origins=(origin,))
+
     def test_input_validation(self):
         for payload in [{'query':'x'}, {'query':'x'*161}, {'query':[]}, {'query':'test','mode':'unknown'}]:
             self.assertEqual(self.call('/api/search',payload)[0],400)

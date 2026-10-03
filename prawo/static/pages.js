@@ -1,17 +1,45 @@
 'use strict';
-// Loaded only by the static Pages build. Never sends the case description.
+// The API origin is fixed at build time, never taken from a query or browser storage.
 window.PrawoPages = {
   data: null,
+  loading: null,
+  apiBaseUrl: '',
   async load() {
-    if (!this.data) {
+    if (this.data) return this.data;
+    if (!this.loading) this.loading = this.loadConfiguration();
+    return this.loading;
+  },
+  async loadConfiguration() {
+    try {
       const response = await fetch('./pages-data.json', {credentials:'omit', signal:AbortSignal.timeout(10000)});
       if (!response.ok) throw new Error('Nie udało się wczytać katalogu źródeł. Odśwież stronę.');
-      this.data = await response.json();
+      const data = await response.json();
+      if (data.api_base_url) {
+        const url = new URL(data.api_base_url);
+        if (url.protocol !== 'https:' || url.origin !== data.api_base_url || url.username || url.password) throw new Error('Nieprawidłowy adres serwera projektu.');
+        this.apiBaseUrl = url.origin;
+      }
+      this.data = data;
+      return data;
+    } catch (error) {
+      this.loading = null;
+      throw error;
     }
-    return this.data;
   },
   async request(path, body) {
     const data = await this.load();
+    if (this.apiBaseUrl) {
+      if (!/^\/api\/(status|search|intake|act)(\?|$)/.test(path)) throw new Error('Nieobsługiwana funkcja aplikacji.');
+      const options = {credentials:'omit', redirect:'error', signal:AbortSignal.timeout(path === '/api/intake' ? 40000 : 25000)};
+      if (body) Object.assign(options, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      let response;
+      try { response = await fetch(this.apiBaseUrl + path, options); }
+      catch { throw new Error('Serwer projektu jest chwilowo niedostępny. Opis pozostał w formularzu. Spróbuj ponownie później.'); }
+      if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Serwer projektu zwrócił nieprawidłową odpowiedź.');
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Nie udało się wykonać zapytania.');
+      return result;
+    }
     if (path === '/api/status') {
       return {site_mode:'static', sources:data.sources, domains:Object.fromEntries(Object.entries(data.domains).map(([key,value])=>[key,value.label])),
         corpus:{metadata_count:0,text_count:0,last_import:null,complete_polish_law:false}, eli_enabled:true};
