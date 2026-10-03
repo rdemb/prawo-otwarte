@@ -5,7 +5,7 @@ usuwania cudzych projektów. Nie zakłada dostępu do konkretnego serwera.
 
 ## 1. Inwentaryzacja
 
-Przeczytaj obowiązujące AGENTS.md. Sprawdź zajęte porty, obecne usługi, wolne
+Sprawdź obowiązujące zasady administratora hosta, zajęte porty, obecne usługi, wolne
 RAM/dysk, rzeczywisty CPU, system, zaporę i lokalizację hosta. Zachowaj SSH,
 Tailscale, konfigurację Codexa oraz konfiguracje innych usług. Instalacja aplikacji
 nie wymaga zmiany portu SSH ani sieci administracyjnej.
@@ -71,6 +71,12 @@ snapshoty, konfiguracja i wersja kodu. Trzymaj zaszyfrowaną kopię poza VPS-em.
 Backup na tym samym dysku zabezpiecza przed pomyłką podczas migracji, nie awarią hosta.
 
 ## 5. Dostęp publiczny
+
+Statyczną stronę publikuje osobny workflow GitHub Pages opisany w README.
+Ta wersja wyszukuje bezpośrednio w ELI i tworzy notatkę w przeglądarce.
+Nie jest jeszcze połączona z backendem VPS. Podłączenie go wymaga adresu HTTPS,
+świadomej konfiguracji zaufanego origin, limitów oraz zmiany adaptera strony;
+nie wystarczy wstawić niezabezpieczonego adresu IP do frontendu.
 
 `deploy/Caddyfile.example` jest szablonem. Zastąp `prawo.example.org` posiadaną
 domeną, sprawdź DNS, istniejący reverse proxy i konflikt portów 80/443. Nie używaj

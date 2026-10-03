@@ -1,6 +1,6 @@
 # Współpraca
 
-Przeczytaj README, AGENTS.md i roadmapę. Otwórz issue opisujące konkretny problem,
+Przeczytaj README i roadmapę. Otwórz issue opisujące konkretny problem,
 źródło, aktualny rezultat i oczekiwane zachowanie. Nie umieszczaj danych klienta
 ani prywatnych dokumentów.
 

@@ -2,6 +2,9 @@
 
 **Polskie prawo, otwarte źródła i sprawdzalne informacje.**
 
+**Adres strony:** [rdemb.github.io/prawo-otwarte](https://rdemb.github.io/prawo-otwarte/)
+— publikacja przez GitHub Pages; wymaga włączenia Pages dla repozytorium.
+
 Publiczny projekt budujący asystenta badania polskiego prawa. Docelowy zakres
 obejmuje wszystkie dziedziny prawa polskiego, z prawem miejscowym, odpowiednimi
 źródłami UE oraz odrębną warstwą orzecznictwa i objaśnień.
@@ -27,7 +30,31 @@ porad przez prawników. Interfejs nie przedstawia tych funkcji jako działający
 **Pobranie aktów nie jest potwierdzeniem kompletności prawa ani poprawności jego
 interpretacji. Status aktu w ELI nie weryfikuje stanu prawnego konkretnej sprawy.**
 
-## Uruchomienie lokalne
+## Publiczna strona — GitHub Pages
+
+Wersja statyczna zachowuje wygląd aplikacji i oferuje wyszukiwanie w ELI bezpośrednio
+z przeglądarki oraz notatkę sprawy tworzoną na urządzeniu użytkownika. Nie przesyła
+opisu sprawy do modelu. Lokalna baza i BASAL wymagają osobnego backendu na VPS;
+nie są przedstawiane jako podłączone do wersji Pages.
+
+Workflow `Publish website` buduje stronę po zmianach na `main`. Jednorazowo ustaw
+w [Settings → Pages](https://github.com/rdemb/prawo-otwarte/settings/pages)
+**Build and deployment → Source → GitHub Actions**. Następnie uruchom workflow
+lub ponów nieudane wdrożenie w Actions. Nie potrzeba dodatkowego tokenu ani domeny.
+
+Publikowanych jest tylko siedem plików przygotowanych w `_site/`. Katalog repo,
+kod serwera, dokumentacja wdrożenia i dane nie są przesyłane jako strona.
+
+```bash
+python3 -m scripts.build_pages --output _site
+python3 -m http.server 8090 --bind 127.0.0.1 --directory _site
+```
+
+Przy kolejnym buildzie wybierz pusty katalog wyjściowy. Builder celowo nie kasuje
+istniejącej zawartości. Instrukcje dla agentów i prywatne notatki operacyjne
+pozostają poza publicznym repozytorium.
+
+## Uruchomienie aplikacji na serwerze lub lokalnie
 
 Python 3.12+ z SQLite FTS5. Kod aplikacji używa standardowej biblioteki Pythona;
 do uruchomienia lokalnego nie trzeba instalować zależności.

@@ -7,4 +7,12 @@ artifacts/
 *.sqlite*
 *.log
 node_modules/
+_site/
+AGENTS.md
+**/AGENTS.md
+agents.md
+**/agents.md
+CLAUDE.md
+.agents/
+.codex/
 .DS_Store

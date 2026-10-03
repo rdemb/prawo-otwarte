@@ -15,6 +15,7 @@ function externalLink(label, url) {
   return a;
 }
 async function request(path, body) {
+  if (window.PrawoPages) return window.PrawoPages.request(path, body);
   const options = {signal: AbortSignal.timeout(25000), credentials: 'same-origin'};
   if (body) Object.assign(options, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
   let response;
@@ -54,7 +55,7 @@ const sourceFallback = [
 ];
 function renderSources(sources) {
   const grid = $('#source-grid'); grid.replaceChildren();
-  const stages = {connected:'ADAPTER GOTOWY', planned:'W PLANIE', reference:'ODNOŚNIKI', unknown:'NIEZWERYFIKOWANE'};
+  const stages = {connected:'DOSTĘPNE', planned:'W PLANIE', reference:'ODNOŚNIKI', unknown:'NIEZWERYFIKOWANE'};
   for (const [index, source] of sources.entries()) {
     const card = element('article', undefined, 'source-card');
     const top = element('div', undefined, 'source-card-top');
@@ -67,10 +68,25 @@ function dateText(value) { return value ? new Date(value).toLocaleDateString('pl
 async function loadStatus() {
   try {
     const status = await request('/api/status');
-    $('#metadata-count').textContent = status.corpus.metadata_count.toLocaleString('pl-PL');
-    $('#text-count').textContent = status.corpus.text_count.toLocaleString('pl-PL');
-    $('#import-date').textContent = dateText(status.corpus.last_import);
-    $('#connection-status').textContent = 'Dane pochodzą z działającej aplikacji. Pokrycie prawa i poprawność historycznych wersji nie są jeszcze potwierdzone.';
+    if (status.site_mode === 'static') {
+      const stats = [['2', 'dzienniki w wyszukiwaniu'], ['Bez konta', 'dostęp do narzędzi'], ['U Ciebie', 'powstaje notatka sprawy']];
+      ['metadata-count','text-count','import-date'].forEach((id, index) => {
+        const node = $('#' + id); node.textContent = stats[index][0]; node.nextElementSibling.textContent = stats[index][1];
+      });
+      $('#connection-status').textContent = 'Wyszukiwarka łączy się bezpośrednio z oficjalnym katalogiem Sejmu. Lokalna baza projektu i automatyczna analiza spraw nie są jeszcze podłączone do tej strony.';
+      $('input[value="local"]').disabled = true; $('input[value="local"]').closest('label').hidden = true;
+      $('#search-panel .panel-intro').textContent = 'Wpisz tytuł lub fragment tytułu aktu. Otrzymasz odnośniki do oficjalnych publikacji.';
+      $('#search-tab small').textContent = 'Oficjalne tytuły i publikacje';
+      $('#intake-form .micro').textContent = 'Opis i notatka pozostają na Twoim urządzeniu. W tej wersji dziedzinę wybierasz samodzielnie; opis nie trafia do modelu ani na serwer projektu.';
+      $('#domain option[value="unknown"]').textContent = 'Wybierz dziedzinę (opcjonalnie)';
+      document.querySelectorAll('.method-list details')[3].querySelector('p').textContent = 'Nie wymagamy konta ani nie zapisujemy opisu sprawy. Notatka powstaje w pamięci przeglądarki. Pobranie jej na urządzenie jest Twoją decyzją.';
+      document.querySelectorAll('.method-list details')[2].querySelector('p').textContent = 'W tej publicznej wersji samodzielnie wybierasz dziedzinę. Integracja modelu na serwerze jest kolejnym etapem. Narzędzie nie rozstrzyga uprawnień, nie oblicza terminów i nie prognozuje wyniku postępowania.';
+    } else {
+      $('#metadata-count').textContent = status.corpus.metadata_count.toLocaleString('pl-PL');
+      $('#text-count').textContent = status.corpus.text_count.toLocaleString('pl-PL');
+      $('#import-date').textContent = dateText(status.corpus.last_import);
+      $('#connection-status').textContent = 'Dane pochodzą z działającej aplikacji. Pokrycie prawa i poprawność historycznych wersji nie są jeszcze potwierdzone.';
+    }
     renderSources(status.sources);
     for (const [key, label] of Object.entries(status.domains)) {
       if (key !== 'unknown') { const option = element('option', label); option.value = key; $('#domain').append(option); }

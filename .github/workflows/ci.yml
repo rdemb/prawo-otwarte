@@ -21,3 +21,4 @@ jobs:
         with:
           node-version: '22'
       - run: node --check prawo/static/app.js
+      - run: node --check prawo/static/pages.js
