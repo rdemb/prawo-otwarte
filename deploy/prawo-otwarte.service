@@ -10,7 +10,7 @@ Group=prawo
 WorkingDirectory=/srv/prawo-otwarte
 EnvironmentFile=/etc/prawo-otwarte.env
 Environment=PYTHONDONTWRITEBYTECODE=1
-ExecStart=/srv/prawo-otwarte/.venv/bin/gunicorn --bind 127.0.0.1:8080 --workers 1 --threads 4 --timeout 60 --graceful-timeout 60 --error-logfile - --log-level warning prawo.web:create_app()
+ExecStart=/srv/prawo-otwarte/.venv/bin/gunicorn --bind 127.0.0.1:8080 --workers 1 --threads 4 --timeout 150 --graceful-timeout 150 --error-logfile - --log-level warning prawo.web:create_app()
 Restart=on-failure
 RestartSec=5
 StateDirectory=prawo-otwarte

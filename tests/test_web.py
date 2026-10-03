@@ -187,3 +187,20 @@ class BasalTests(unittest.TestCase):
         for _ in range(2):
             self.assertEqual(router.classify('syntetyczny opis')['method'], 'unavailable')
         self.assertEqual(observed, [30, 30])
+
+class AnswerApiTests(unittest.TestCase):
+    setUp = WebTests.setUp
+    call = WebTests.call
+
+    def test_answer_without_sources_is_explicit_and_does_not_need_classifier(self):
+        self.app.router.classify = lambda _:self.fail('Classification must not gate answers')
+        code,_,data=self.call('/api/answer',{'question':'Syntetyczne pytanie bez źródeł'})
+        self.assertEqual(code,200);self.assertEqual(data['mode'],'no_sources')
+        self.assertFalse(data['temporal_verified'])
+        self.assertTrue(self.call('/api/status')[2]['source_answers'])
+
+    def test_answer_endpoint_validates_body_date_and_preflight(self):
+        for body in [{'question':'a'},{'question':'x'*2001},{'question':'Syntetyczne pytanie','event_date':'2999-01-01'}]:
+            self.assertEqual(self.call('/api/answer',body)[0],400)
+        self.app.settings=replace(self.settings,allowed_origins=('https://rdemb.github.io',))
+        self.assertEqual(self.call('/api/answer',REQUEST_METHOD='OPTIONS',HTTP_ORIGIN='https://rdemb.github.io',HTTP_ACCESS_CONTROL_REQUEST_METHOD='POST')[0],204)

@@ -16,7 +16,7 @@ function externalLink(label, url) {
 }
 async function request(path, body) {
   if (window.PrawoPages) return window.PrawoPages.request(path, body);
-  const timeout = path === '/api/intake' ? 40000 : 25000;
+  const timeout = path === '/api/answer' ? 130000 : path === '/api/intake' ? 40000 : 25000;
   const options = {signal: AbortSignal.timeout(timeout), credentials: 'same-origin'};
   if (body) Object.assign(options, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
   let response;
@@ -31,7 +31,7 @@ async function request(path, body) {
 function feedback(id, message, error = false) {
   const node = $(id); node.textContent = message; node.classList.toggle('error', error);
 }
-const tabs = ['search', 'intake', 'saved'];
+const tabs = ['search', 'answer', 'intake', 'saved'];
 function setTab(name, focus = false) {
   for (const key of tabs) {
     const active = key === name;
@@ -81,6 +81,7 @@ async function loadStatus() {
   try {
     const status = await request('/api/status');
     modelEnabled = status.basal?.enabled === true;
+    updateAnswerCapability(status);
     if (status.site_mode === 'static') {
       $('#service-label').textContent = 'Tryb bez modelu';
       $('#service-detail').textContent = 'Notatka na Twoim urządzeniu · wyszukiwanie w ELI';
@@ -136,6 +137,7 @@ async function loadStatus() {
     serviceReady = true;
     $('#service-detail').textContent += ' · sprawdzono ' + new Date().toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
   } catch (error) {
+    updateAnswerCapability(null);
     $('#connection-status').textContent = error.message;
     $('#model-connection-state').textContent = 'BRAK POŁĄCZENIA';
     $('#model-connection-note').textContent = 'Nie udało się odczytać stanu aplikacji. Nie potwierdzamy dostępności modelu. Użyj przycisku „Sprawdź połączenie” nad pracownią.';
@@ -324,7 +326,7 @@ async function measuredIntake(payload, sample = null) {
     const data = await request('/api/intake', payload);
     if (data.kind !== 'intake_only' || data.legal_answer !== null || !data.routing || !Array.isArray(data.questions)) throw new Error('Nieprawidłowa odpowiedź aplikacji. Spróbuj ponownie później.');
     const ms = performance.now() - started;
-    const id = measurements.add({ms, modelAttempt, method:data.routing.method, predicted:data.routing.domain, sampleId:sample?.id, expected:sample?.expected});
+    const id = measurements.add({ms, modelAttempt, method:data.routing.method, predicted:data.routing.domain, diagnostics:data.routing.diagnostics, sampleId:sample?.id, expected:sample?.expected});
     renderMeasurements(); return {data, ms, id};
   } catch (error) {
     measurements.add({ms:performance.now() - started, modelAttempt, method:'error', sampleId:sample?.id, expected:sample?.expected});
@@ -350,7 +352,7 @@ $('#run-benchmark').addEventListener('click', async () => {
   try {
     const {data, ms} = await measuredIntake({description:sample.text, event_date:'', domain:'unknown'}, sample);
     const match = data.routing.method === 'basal' && data.routing.domain === sample.expected;
-    feedback('#benchmark-feedback', `${match ? 'Zgodność z oczekiwaną dziedziną.' : methodLabels[data.routing.method] + ': ' + data.domain_label + '.'} Czas odpowiedzi: ${seconds(ms)}. ${data.routing.reason}`);
+    feedback('#benchmark-feedback', `${match ? 'Zgodność z oczekiwaną dziedziną.' : methodLabels[data.routing.method] + ': ' + data.domain_label + '.'} Czas odpowiedzi: ${seconds(ms)}. ${data.routing.reason} ${routingDiagnostics(data.routing)}`);
   } catch (error) { feedback('#benchmark-feedback', error.message, true); }
   finally { setIntakeBusy(false); }
 });
@@ -400,6 +402,9 @@ $('#intake-form').addEventListener('submit', async event => {
     const card = element('article', undefined, 'intake-card');
     card.append(element('span', `${methodLabels[data.routing.method]} · ${seconds(ms)}`, 'result-meta'), element('h4', data.domain_label));
     const reason = element('p', data.routing.reason); card.append(reason);
+    if (routingDiagnostics(data.routing)) card.append(element('p', routingDiagnostics(data.routing), 'routing-diagnostics'));
+    const ask = element('button', 'Przejdź do odpowiedzi ze źródeł →', 'text-button'); ask.type = 'button';
+    ask.addEventListener('click', () => { setTab('answer'); if (!$('#answer-question').value.trim()) $('#answer-question').value = payload.description.slice(0,2000); $('#answer-question').focus(); }); card.append(ask);
     let confirmed = data.routing.method === 'user';
     if (data.routing.method === 'basal' && data.routing.domain !== 'unknown') {
       const controls = element('div', undefined, 'confirmation-controls');
@@ -437,6 +442,74 @@ $('#intake-form').addEventListener('submit', async event => {
   } catch (error) { clearInterval(timer); feedback('#intake-feedback', error.message, true); }
   finally { clearInterval(timer); setIntakeBusy(false); $('#intake-results').setAttribute('aria-busy', 'false'); }
 });
+let answersAvailable = false, answerBusy = false;
+const answerMeasurements = [];
+function routingDiagnostics(routing) {
+  const d = routing?.diagnostics;
+  if (!d || !Number.isFinite(d.score) || !Number.isFinite(d.threshold)) return '';
+  return `Najwyższy wynik: ${d.candidate_label} · ${(d.score * 100).toFixed(1)} / 100; próg: ${(d.threshold * 100).toFixed(1)}. To wynik modelu, nie miara poprawności prawnej.`;
+}
+function updateAnswerCapability(status) {
+  answersAvailable = status?.source_answers === true;
+  $('#answer-submit').disabled = !answersAvailable || answerBusy;
+  $('#answer-capability').textContent = !status ? 'Nie udało się potwierdzić dostępności. Sprawdź połączenie nad pracownią.' : !answersAvailable
+    ? 'Ta instalacja wymaga aktualizacji serwera, aby uruchomić odpowiedzi. Wyszukiwanie aktów i notatka są dostępne w sąsiednich zakładkach.'
+    : status.generative_answers ? 'Dostępne: fragmenty źródeł, lokalne generowanie objaśnień i kontrola dowodów przez BASAL. Dostępność modeli sprawdzimy podczas zapytania.'
+    : 'Dostępne: wyszukiwanie fragmentów przepisów. Generator objaśnień nie jest jeszcze włączony w tej instalacji.';
+  const list = $('#core-source-list'); list.replaceChildren();
+  const labels = {text:'Tekst dostępny', metadata:'Tylko metadane', stale:'Tekst wymaga aktualizacji', missing:'Do zaimportowania'};
+  if (!Array.isArray(status?.core_sources)) list.append(element('li', 'Lista pokrycia wymaga aktualizacji API.'));
+  else for (const act of status.core_sources) {
+    const row = element('li'); row.append(externalLink(act.name, `https://eli.gov.pl/eli/${act.eli}/ogl`), element('span', labels[act.state] || 'Nieznany stan', `status-badge ${act.state === 'text' ? 'connected' : ''}`), element('small', act.text_fetched_at ? 'Tekst pobrano: ' + dateText(act.text_fetched_at) : act.eli)); list.append(row);
+  }
+}
+function updateAnswerMetrics(row) {
+  answerMeasurements.push(row); if (answerMeasurements.length > 50) answerMeasurements.shift();
+  const completed = answerMeasurements.filter(x => x.mode !== 'error');
+  const drafts = completed.filter(x => x.mode === 'draft');
+  const times = completed.map(x => x.ms).sort((a,b) => a-b);
+  const mid = Math.floor(times.length/2);
+  const median = times.length ? (times.length % 2 ? times[mid] : (times[mid-1]+times[mid])/2) : null;
+  $('#answer-metrics').textContent = `Ukończone: ${completed.length} / ${answerMeasurements.length} · objaśnienia z kontrolą BASAL-a: ${drafts.length} · mediana całości: ${median === null ? '—' : seconds(median)}. Ostatni generator: ${row.generationMs === null ? 'nie uruchomiono' : seconds(row.generationMs)}.`;
+  $('#download-answer-metrics').disabled = false;
+}
+$('#download-answer-metrics').addEventListener('click', () => downloadText('prawo-otwarte-odpowiedzi-pomiary.json', JSON.stringify({schema:'prawo-otwarte/answers/v1', scope:'Last 50 requests in this tab; no questions or answers', legalCorrectness:'not_evaluated', rows:answerMeasurements},null,2)));
+$('#answer-date').max = $('#event-date').max;
+for (const id of ['answer-question','answer-date']) $('#' + id).addEventListener('input', () => { $('#answer-results').replaceChildren(); if (!answerBusy) feedback('#answer-feedback',''); });
+$('#answer-form').addEventListener('submit', async event => {
+  event.preventDefault(); if (answerBusy || !answersAvailable) return;
+  const payload = {question:$('#answer-question').value.trim(), event_date:$('#answer-date').value};
+  if (payload.question.length < 10) { feedback('#answer-feedback', 'Wpisz przynajmniej 10 znaków pytania.',true); return; }
+  answerBusy = true; $('#answer-submit').disabled = true; $('#answer-results').replaceChildren(); $('#answer-results').setAttribute('aria-busy','true');
+  const started = performance.now();
+  feedback('#answer-feedback','Szukamy fragmentów. Jeśli generator jest włączony, odpowiedź może potrwać do dwóch minut.');
+  const timer = setInterval(() => feedback('#answer-feedback', `Praca nad odpowiedzią… ${Math.floor((performance.now()-started)/1000)} s. Pytanie pozostaje w formularzu.`),1000);
+  try {
+    const data = await request('/api/answer',payload), ms = performance.now()-started;
+    if (data.kind !== 'source_answer' || !Array.isArray(data.sources) || !Array.isArray(data.claims)) throw new Error('Nieprawidłowy format odpowiedzi.');
+    updateAnswerMetrics({at:new Date().toISOString(), ms:Math.round(ms), mode:data.mode, sourceCount:data.sources.length, generationStatus:data.generation?.status, generationMs:data.generation?.elapsed_ms ?? null, evidence:data.evidence_check?.verdict, claimCount:data.claims.length});
+    if (payload.question !== $('#answer-question').value.trim() || payload.event_date !== $('#answer-date').value) { feedback('#answer-feedback','Pytanie zmieniło się podczas oczekiwania. Wyślij aktualną wersję.'); return; }
+    const card = element('article',undefined,'answer-card');
+    card.append(element('span', `${data.mode === 'draft' ? 'Objaśnienie z cytatami' : data.mode === 'no_sources' ? 'Potrzebne dodatkowe źródła' : 'Fragmenty do sprawdzenia'} · ${seconds(ms)}`, 'result-meta'), element('h4', 'Odpowiedź zaczyna się od dowodu.'),element('p',data.message));
+    if (data.mode === 'draft') for (const claim of data.claims) {
+      const block = element('div',undefined,'answer-claim'); block.append(element('p',claim.explanation),element('blockquote',claim.quote));
+      const link = element('a','Sprawdź fragment ['+claim.source_id+'] ↓'); link.href='#evidence-'+claim.source_id; block.append(link); card.append(block);
+    }
+    card.append(element('p',data.limitation,'notice'));
+    if (data.event_date) card.append(element('p',`Podana data: ${data.event_date}. Wersja prawa dla tej daty nie została zweryfikowana.`,'micro'));
+    for (const source of data.sources) {
+      const details = element('details',undefined,'evidence-source'); details.id='evidence-'+source.id; details.open = data.sources.length === 1;
+      details.append(element('summary',`[${source.id}] ${source.label} · ${source.title}`),element('blockquote',source.text),externalLink('Otwórz oficjalną publikację ↗',source.source_url),element('p',`ELI: ${source.eli} · stan prawny publikacji: ${source.legal_status_date || 'nie podano'} (późniejsze zmiany wymagają sprawdzenia) · pobrano: ${dateText(source.text_fetched_at)} · SHA-256 tekstu: ${source.text_sha256}`,'micro')); card.append(details);
+    }
+    const actions=element('div',undefined,'note-actions');
+    const save=element('button','Pobierz odpowiedź i źródła ↓','button outline');save.type='button';
+    save.addEventListener('click',()=>downloadText('prawo-otwarte-odpowiedz.json',JSON.stringify({question:payload.question,...data},null,2)));
+    const search=element('button','Wyszukaj więcej w ELI →','text-button'); search.type='button'; search.addEventListener('click',()=>{setTab('search');$('#query').focus();});
+    actions.append(save,search);card.append(actions);$('#answer-results').append(card);feedback('#answer-feedback',`Gotowe w ${seconds(ms)}. Sprawdź źródła i ograniczenia poniżej.`);
+  } catch(error) { updateAnswerMetrics({at:new Date().toISOString(),ms:Math.round(performance.now()-started),mode:'error',generationMs:null});feedback('#answer-feedback',error.message,true); }
+  finally {clearInterval(timer);answerBusy=false;$('#answer-submit').disabled=!answersAvailable;$('#answer-results').setAttribute('aria-busy','false');}
+});
+
 renderMeasurements();
 $('#publication-year').max = String(new Date().getFullYear());
 let statusReady = loadStatus();

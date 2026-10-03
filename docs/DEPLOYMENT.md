@@ -61,7 +61,7 @@ konfiguracja. Domyślnie `PRAWO_BASAL_ENABLED=0`.
 ## 4. Import i odtwarzanie
 
 Uruchamiaj importer jako `prawo`, z `PRAWO_DATA_DIR=/var/lib/prawo-otwarte`.
-Rozpocznij od `bootstrap --texts`; następnie importuj metadane DU/MP rocznikami
+Do odpowiedzi zainstaluj systemowy `poppler-utils` i uruchom `import-core --texts`; następnie importuj metadane DU/MP rocznikami
 w ograniczonych partiach. Najpierw zmierz skutki importu i obciążenie API.
 Nie twórz harmonogramu bez checkpointów, raportowania błędów i planu rekonsyliacji.
 
@@ -117,7 +117,7 @@ Budowanie ręczne z adresem API:
 `python -m scripts.build_pages --output _site --api-base-url https://api.twoja-domena.pl`.
 Bez tej opcji i zmiennej środowiskowej `PRAWO_API_BASE_URL` pozostaje tryb
 samodzielny. Katalog wyjściowy musi być pusty; publikuje się wyłącznie siedem
-dozwolonych zasobów, nigdy repozytorium w całości.
+rodzajów zasobów źródłowych, nigdy repozytorium w całości.
 
 `deploy/Caddyfile.example` jest szablonem wariantu z domeną. Zastąp `prawo.example.org` posiadaną
 domeną, sprawdź DNS, istniejący reverse proxy i konflikt portów 80/443. Nie używaj
@@ -198,8 +198,8 @@ ani trafności prawnej. Wyniki znajdują się w logach poszczególnych kroków.
 
 `PRAWO_BASAL_TIMEOUT` pozostaje domyślnie równy 8 sekund; po pomiarze lokalnego
 modelu można ustawić dodatnią wartość do 30 sekund. Przeglądarka czeka na wywiad
-do 40 sekund, pozostałe żądania do 25 sekund. Szablon Gunicorn ma timeout oraz
-graceful timeout 60 sekund. Timeout Gunicorna nadzoruje worker i nie zastępuje
+do 40 sekund, odpowiedzi ze źródeł do 130 sekund, pozostałe żądania do 25 sekund. Szablon Gunicorn ma timeout oraz
+graceful timeout 150 sekund. Timeout Gunicorna nadzoruje worker i nie zastępuje
 limitu wywołania modelu. Użytkownik widzi informację o oczekiwaniu i zachowuje
 możliwość samodzielnego wyboru dziedziny przy błędzie klasyfikacji.
 
@@ -216,3 +216,10 @@ uruchom testy, a następnie restartuj wyłącznie `prawo-otwarte.service`.
 W razie błędu wróć do wcześniejszego wydania i sprawdzonej kopii danych. Nie używaj
 `git reset --hard` do usuwania nieznanych lokalnych zmian. Zmiany schematu bazy
 w kolejnych wersjach wymagają jawnych migracji i planu cofnięcia.
+
+## 7. Odpowiedzi i generator
+
+Szczegółowy kontrakt, import tekstów i limity: [ANSWERS.md](ANSWERS.md).
+Zmiany schematu SQLite są dodawane przy starcie; przed aktualizacją wykonaj
+backup API SQLite i zachowaj wersję kodu. Nowe tabele nie usuwają poprzednich danych.
+Nie włączaj generatora przed rzeczywistym testem zasobów i obsługi przeciążenia.

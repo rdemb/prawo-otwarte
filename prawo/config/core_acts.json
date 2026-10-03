@@ -1,0 +1,17 @@
+[
+  {"eli":"DU/1997/483","name":"Konstytucja RP","domain":"constitutional"},
+  {"eli":"DU/1964/93","name":"Kodeks cywilny","domain":"civil"},
+  {"eli":"DU/1974/141","name":"Kodeks pracy","domain":"work"},
+  {"eli":"DU/2014/827","name":"Prawa konsumenta","domain":"consumer"},
+  {"eli":"DU/1960/168","name":"Kodeks postępowania administracyjnego","domain":"administrative"},
+  {"eli":"DU/1964/59","name":"Kodeks rodzinny i opiekuńczy","domain":"family"},
+  {"eli":"DU/1997/553","name":"Kodeks karny","domain":"criminal"},
+  {"eli":"DU/1997/555","name":"Kodeks postępowania karnego","domain":"criminal"},
+  {"eli":"DU/1964/296","name":"Kodeks postępowania cywilnego","domain":"civil"},
+  {"eli":"DU/2000/1037","name":"Kodeks spółek handlowych","domain":"civil"},
+  {"eli":"DU/2002/1270","name":"Postępowanie przed sądami administracyjnymi","domain":"administrative"},
+  {"eli":"DU/1997/926","name":"Ordynacja podatkowa","domain":"tax"},
+  {"eli":"DU/1994/414","name":"Prawo budowlane","domain":"property"},
+  {"eli":"DU/2001/733","name":"Ochrona praw lokatorów","domain":"property"},
+  {"eli":"DU/1994/83","name":"Prawo autorskie i prawa pokrewne","domain":"civil"}
+]

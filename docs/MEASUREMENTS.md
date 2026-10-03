@@ -54,3 +54,13 @@ node --test tests/metrics.test.cjs
 Test publicznego HTTPS i rzeczywistej odpowiedzi modelu jest oddzielnym workflow
 [Public HTTPS and model check](../.github/workflows/public-check.yml).
 Potwierdza działanie techniczne w chwili testu, nie ciągłą dostępność.
+
+## Odpowiedzi ze źródeł
+
+Oddzielny panel mierzy ostatnie 50 żądań `/api/answer`. Eksport nie zawiera
+pytania ani odpowiedzi. Czas generatora to czas lokalnego żądania HTTP, nie
+czysta inferencja GPU/CPU. Liczba zaakceptowanych objaśnień oznacza wynik
+kontroli cytatów i BASAL-a; nie oznacza trafności prawnej.
+
+Eksport klasyfikacji może zawierać kandydata, wynik punktowy i próg decyzji.
+Te dane pomagają wyjaśnić odmowy i nie są skalibrowaną pewnością prawną.

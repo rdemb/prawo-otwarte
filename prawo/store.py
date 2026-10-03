@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .sources import normalize_act, now
+from .evidence import index_passages
 
 
 class Store:
@@ -28,7 +29,22 @@ class Store:
                 CREATE TABLE IF NOT EXISTS sync_runs (
                     scope TEXT PRIMARY KEY, next_offset INTEGER, reported_total INTEGER,
                     completed INTEGER, updated_at TEXT);
+                CREATE TABLE IF NOT EXISTS passages (
+                    id INTEGER PRIMARY KEY, eli TEXT NOT NULL, ordinal INTEGER,
+                    label TEXT, body TEXT, text_sha256 TEXT, UNIQUE(eli,ordinal));
+                CREATE TABLE IF NOT EXISTS answer_publications (
+                    root_eli TEXT PRIMARY KEY, eli TEXT NOT NULL, representation TEXT NOT NULL,
+                    legal_status_date TEXT, selected_at TEXT NOT NULL);
+                CREATE VIRTUAL TABLE IF NOT EXISTS passages_fts USING fts5(body, content='passages', content_rowid='id');
+                CREATE TRIGGER IF NOT EXISTS passages_ai AFTER INSERT ON passages BEGIN
+                    INSERT INTO passages_fts(rowid,body) VALUES (new.id,new.body); END;
+                CREATE TRIGGER IF NOT EXISTS passages_ad AFTER DELETE ON passages BEGIN
+                    INSERT INTO passages_fts(passages_fts,rowid,body) VALUES ('delete',old.id,old.body); END;
             """)
+            if "text_kind" not in {r[1] for r in db.execute("PRAGMA table_info(acts)")}:
+                db.execute("ALTER TABLE acts ADD COLUMN text_kind TEXT NOT NULL DEFAULT 'html'")
+            for row in db.execute("SELECT eli,body FROM acts WHERE body!='' AND eli NOT IN (SELECT eli FROM passages)").fetchall():
+                index_passages(db,row["eli"],row["body"])
 
     @contextmanager
     def connect(self):
@@ -69,12 +85,13 @@ class Store:
             self._reindex(db, act["eli"])
         return act
 
-    def set_text(self, eli, text, raw, source_url):
+    def set_text(self, eli, text, raw, source_url, kind="html"):
         with self.connect() as db:
             if not db.execute("SELECT 1 FROM acts WHERE eli=?", (eli,)).fetchone():
                 raise ValueError("Najpierw zaimportuj metadane aktu.")
-            digest = self._snapshot(db, eli, "html", raw, source_url, now())
-            db.execute("UPDATE acts SET body=?, text_fetched_at=?, text_stale=0 WHERE eli=?", (text,now(),eli))
+            digest = self._snapshot(db, eli, kind, raw, source_url, now())
+            db.execute("UPDATE acts SET body=?, text_fetched_at=?, text_stale=0, text_kind=? WHERE eli=?", (text,now(),kind,eli))
+            index_passages(db,eli,text)
             self._reindex(db, eli)
         return digest
 
@@ -88,7 +105,7 @@ class Store:
     def _public(row):
         act = normalize_act(json.loads(row["metadata"]))
         act.update(fetched_at=row["fetched_at"], text_fetched_at=row["text_fetched_at"],
-                   text_stale=bool(row["text_stale"]), indexed_text=bool(row["body"]) and not row["text_stale"])
+                   text_stale=bool(row["text_stale"]), text_kind=row["text_kind"], indexed_text=bool(row["body"]) and not row["text_stale"])
         return act
 
     def get(self, eli):
@@ -121,12 +138,27 @@ class Store:
             counts = db.execute("SELECT COUNT(*) n, COALESCE(SUM(body!='' AND text_stale=0),0) t, MAX(fetched_at) d FROM acts").fetchone()
             return {"metadata_count": counts["n"], "text_count": counts["t"], "last_import": counts["d"],
                     "temporal_verified_count": 0, "complete_polish_law": False,
+                    "passage_count":db.execute("SELECT COUNT(*) FROM passages p JOIN acts a ON a.eli=p.eli WHERE a.text_stale=0").fetchone()[0],
+                    "answer_source_count":db.execute("SELECT COUNT(DISTINCT a.eli) FROM acts a JOIN answer_publications ap ON a.eli=ap.eli WHERE a.text_stale=0 AND a.body!='' AND a.text_kind='pdf'").fetchone()[0],
                     "by_publisher": {r["publisher"]:r["n"] for r in db.execute("SELECT publisher,COUNT(*) n FROM acts GROUP BY publisher")},
                     "imports": [dict(r) for r in db.execute("SELECT * FROM sync_runs ORDER BY scope")]}
 
     def checkpoint(self, scope, offset, total, complete):
         with self.connect() as db:
             db.execute("INSERT OR REPLACE INTO sync_runs VALUES (?,?,?,?,?)", (scope,offset,total,int(complete),now()))
+
+    def coverage(self, catalog):
+        with self.connect() as db:
+            indexed = {row["eli"]:self._public(row) for row in db.execute("SELECT * FROM acts")}
+            selected = {row["root_eli"]:dict(row) for row in db.execute("SELECT * FROM answer_publications")}
+        return [dict(entry, publication=selected.get(entry["eli"]), state="text" if indexed.get(selected.get(entry["eli"],{}).get("eli"),{}).get("indexed_text") else
+                     "stale" if indexed.get(selected.get(entry["eli"],{}).get("eli"),{}).get("text_stale") else
+                     "metadata" if entry["eli"] in indexed else "missing",
+                     text_fetched_at=indexed.get(selected.get(entry["eli"],{}).get("eli"),{}).get("text_fetched_at")) for entry in catalog]
+
+    def select_answer_publication(self, root_eli, eli, representation, legal_status_date=None):
+        with self.connect() as db:
+            db.execute("INSERT OR REPLACE INTO answer_publications VALUES (?,?,?,?,?)",(root_eli,eli,representation,legal_status_date,now()))
 
     def offset(self, scope):
         with self.connect() as db:

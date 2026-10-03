@@ -1,11 +1,15 @@
 """Official ELI adapter. Only administrator-chosen endpoints; no arbitrary URL fetch."""
 import json
+import ipaddress
 import re
+import subprocess
+import tempfile
+from pathlib import Path
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, build_opener, HTTPRedirectHandler
+from urllib.parse import urlencode, urlsplit
+from urllib.request import Request, build_opener, HTTPRedirectHandler, ProxyHandler
 
 ELI_BASE = "https://api.sejm.gov.pl/eli"
 ELI_ID = re.compile(r"(?:DU|MP)/\d{4}/\d{1,10}\Z")
@@ -30,13 +34,19 @@ class NoRedirect(HTTPRedirectHandler):
         raise SourceError("Źródło zmieniło adres. Wymagana weryfikacja adaptera.")
 
 
-def fetch_bytes(url, *, timeout=12, body=None, max_bytes=8_000_000):
+def fetch_bytes(url, *, timeout=12, body=None, max_bytes=8_000_000, accept="application/json, text/html;q=0.9"):
     headers = {"User-Agent": "PrawoOtwarte/0.1 (+https://github.com/rdemb/prawo-otwarte)",
-               "Accept": "application/json, text/html;q=0.9"}
+               "Accept": accept}
     if body is not None:
         headers["Content-Type"] = "application/json"
+    handlers = [NoRedirect]
     try:
-        with build_opener(NoRedirect).open(Request(url, data=body, headers=headers), timeout=timeout) as response:
+        if ipaddress.ip_address(urlsplit(url).hostname or "").is_loopback:
+            handlers.append(ProxyHandler({}))  # Local model requests never use HTTP_PROXY.
+    except ValueError:
+        pass
+    try:
+        with build_opener(*handlers).open(Request(url, data=body, headers=headers), timeout=timeout) as response:
             data = response.read(max_bytes + 1)
             if len(data) > max_bytes:
                 raise SourceError("Odpowiedź przekracza limit rozmiaru.")
@@ -131,6 +141,31 @@ class EliClient:
         if act["eli"] != eli:
             raise SourceError("Identyfikator odpowiedzi nie odpowiada żądanemu aktowi.")
         return payload, raw, url
+
+    def pdf_text(self, eli, filename, kind):
+        if kind not in {"T","O","U"} or not re.fullmatch(r"[A-Za-z0-9_-]+\.pdf",filename):
+            raise ValueError("Nieprawidłowa nazwa oficjalnego PDF.")
+        url = ELI_BASE + "/acts/" + validate_eli(eli) + "/text/" + kind + "/" + filename
+        raw = self.fetcher(url,timeout=self.timeout,accept="*/*")
+        if not raw.startswith(b"%PDF-"):
+            raise SourceError("Źródło nie zwróciło PDF.")
+        with tempfile.TemporaryDirectory(prefix="prawo-pdf-") as folder:
+            source, target = Path(folder)/"source.pdf", Path(folder)/"text.txt"
+            source.write_bytes(raw)
+            try:
+                subprocess.run(["pdftotext","-enc","UTF-8","-nopgbrk",str(source),str(target)],
+                    check=True,timeout=30,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                if target.stat().st_size > 8_000_000:
+                    raise SourceError("Tekst PDF przekracza limit.")
+                text = target.read_text()
+            except (OSError,subprocess.SubprocessError,UnicodeError) as exc:
+                raise SourceError("Nie udało się odczytać PDF; wymagany pdftotext z poppler-utils.") from exc
+        # Remove repeating page furniture, preserve punctuation and paragraph breaks.
+        text = "\n".join(line.strip() for line in text.splitlines() if line.strip()
+                         and not re.match(r"^(Dziennik Ustaw|Poz\. \d+|©Kancelaria Sejmu|\d+ z \d+)$",line.strip()))
+        if len(text) < 100 or "Art." not in text:
+            raise SourceError("PDF nie zawiera czytelnego tekstu aktu. Nie wykonujemy OCR automatycznie.")
+        return text,raw,url
 
     def text(self, eli):
         url = ELI_BASE + "/acts/" + validate_eli(eli) + "/text.html"

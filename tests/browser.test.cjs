@@ -113,3 +113,35 @@ test('connected laboratory handles recovery, abstention, confirmation, ratings a
     assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length),0); assert.deepEqual(errors,[]);
   } finally { await page.close(); }
 });
+
+test('answers show evidence, remain compatible with older API and export only anonymous metrics', async () => {
+  const page = await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
+  let enabled=false, mode='draft', answerCalls=0;
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const source={id:'S1',eli:'DU/2026/1',label:'Art. 1.',title:'Syntetyczny akt testowy',text:'Syntetyczny fragment do testu interfejsu, nie jest prawdziwym przepisem.',source_url:'https://eli.gov.pl/eli/DU/2026/1/ogl',text_fetched_at:'2026-10-03',text_sha256:'a'.repeat(64),legal_status_date:'2026-01-01'};
+  await page.route('https://api.example.org/api/**',async route=>{
+    const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'GET, POST','Access-Control-Allow-Headers':'Content-Type'};
+    if(route.request().method()==='OPTIONS')return route.fulfill({status:204,headers});
+    if(route.request().url().endsWith('/status'))return route.fulfill({headers,json:{domains:Object.fromEntries(Object.entries(config.domains).map(([k,v])=>[k,v.label])),sources:config.sources,corpus:{metadata_count:15,text_count:15,last_import:null},basal:{enabled:true},eli_enabled:true,source_answers:enabled,generative_answers:enabled,core_sources:[{eli:'DU/2026/1',name:'Syntetyczny akt',state:'text',text_fetched_at:'2026-10-03'}]}});
+    answerCalls++;
+    if(mode==='error')return route.fulfill({status:503,headers,json:{error:'Synthetic outage'}});
+    return route.fulfill({headers,json:{kind:'source_answer',mode,sources:mode==='no_sources'?[]:[source],claims:mode==='draft'?[{source_id:'S1',quote:source.text,explanation:'<script>window.UNSAFE=true</script> Testowe objaśnienie.'}]:[],message:'Syntetyczna odpowiedź testowa.',limitation:'Wersja prawa wymaga sprawdzenia.',generation:{status:'completed',elapsed_ms:120},evidence_check:{verdict:'supported'}}});
+  });
+  try {
+    await page.goto(origin+'/connected/');await ready(page);await waitForText(page,'#service-label','Połączono');
+    await page.locator('#answer-tab').click();assert.equal(await page.locator('#answer-submit').isDisabled(),true);
+    enabled=true;await page.locator('#refresh-status').click();await waitForText(page,'#answer-capability','generowanie');
+    const secret='SYNTHETIC_PRIVATE_ANSWER_874: konkretne pytanie o przepis';
+    await page.locator('#answer-question').fill(secret);await page.locator('#answer-submit').click();await waitForText(page,'#answer-feedback','Gotowe');
+    assert.equal(answerCalls,1);assert.equal(await page.locator('.answer-claim').count(),1);
+    assert.equal(await page.evaluate(()=>window.UNSAFE),undefined);
+    assert.equal(await page.locator('#evidence-S1').count(),1);
+    for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Answer overflow '+width);}
+    if(process.env.PRAWO_TEST_SCREENSHOT) {await page.setViewportSize({width:390,height:844});await page.locator('#answer-panel').screenshot({path:process.env.PRAWO_TEST_SCREENSHOT});}
+    const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#download-answer-metrics').click()]);
+    const exported=fs.readFileSync(await download.path(),'utf8');assert.ok(!exported.includes(secret));assert.ok(!exported.includes(source.text));assert.equal(JSON.parse(exported).rows.length,1);
+    mode='no_sources';await page.locator('#answer-submit').click();await waitForText(page,'#answer-feedback','Gotowe');assert.equal(await page.locator('.evidence-source').count(),0);
+    mode='error';await page.locator('#answer-submit').click();await waitForText(page,'#answer-feedback','Synthetic outage');assert.equal(await page.locator('#answer-question').inputValue(),secret);
+    assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
+  }finally{await page.close();}
+});

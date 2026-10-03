@@ -33,6 +33,11 @@
           sampleId: input.sampleId || null, expected: input.expected || null,
           predicted: input.predicted || null, rating: null
         };
+        const d = input.diagnostics;
+        if (d && ['consumer','work','civil','family','administrative','tax','criminal','property','unknown'].includes(d.candidate)
+            && Number.isFinite(d.score) && d.score >= 0 && d.score <= 1 && Number.isFinite(d.threshold) && d.threshold >= 0 && d.threshold <= 1) {
+          row.diagnostics = {candidate:d.candidate,score:d.score,threshold:d.threshold,calibrated:false};
+        }
         rows.push(row); rows = rows.slice(-limit); return row.id;
       },
       rate(id, rating) { const row = rows.find(item => item.id === id); if (row?.method === 'basal') row.rating = typeof rating === 'boolean' ? rating : null; },
