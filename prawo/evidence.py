@@ -25,7 +25,9 @@ def relevance(text, tokens):
     opening = [stem(w) for w in re.findall(r"[^\W_]+",text[:450].lower()) if len(w) >= 3 and w not in STOP]
     phrase = " ".join(opening)
     ordered = sum(" ".join(tokens[i:i+n]) in phrase for n in (2,3,4) for i in range(max(0,len(tokens)-n+1)))
-    return coverage + ordered * 2
+    # Matching another distinct concept must outweigh repeated phrases. Otherwise
+    # a form heading can displace the operative article even with a worse BM25.
+    return coverage * 10 + min(ordered, 9)
 
 
 def passages(text):

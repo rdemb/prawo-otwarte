@@ -159,3 +159,16 @@ nie potwierdzono jego publicznego HTTPS; są to czynności wdrożeniowe operator
   Wymagają oddzielnego odbioru rzeczywistego runtime, zasobów i jakości.
 - Test repozytorium jest kontrolą wskazanych typów plików/wzorców, nie pełnym
   audytem bezpieczeństwa. Bazy, PDF, raporty i instrukcje agentów pozostają poza Git.
+
+## Lokalny generator i kontrola dowodów
+
+Dodatkowe testy obejmują dokładne cytaty powiązane ze źródłem w schemacie JSON,
+próg kontrolera dowodów bez jego obniżania, ranking różnych pojęć przed
+powtarzanymi nagłówkami oraz gateway utrzymujący zajętość po rozłączeniu klienta.
+Testy gateway uruchamiają prawdziwe gniazda loopback z kontrolowanym upstream;
+nie zastępują testu rzeczywistego modelu i limitów na docelowym hoście.
+
+Mała próba kontraktu BASAL nie jest ewaluacją poprawności prawnej. Kontroler
+może wskazać błędną opcję z niskim wynikiem; próg ma pozostać aktywny. Wdrożenie
+wymaga sprawdzenia zarówno poprawnych objaśnień, jak i sprzeczności, pominiętych
+warunków, ataków instrukcjami oraz braku dostępnego modelu.
