@@ -136,3 +136,26 @@ niejednoznacznych reprezentacji i identyfikatorów interfejsu. Adresy testowe s�
 wyłącznie do parsowania; testy nie nawiązują z nimi połączenia. Domyślny tryb
 samodzielny Pages pozostaje bez zmian. Nie wystawiono tu certyfikatu dla VPS ani
 nie potwierdzono jego publicznego HTTPS; są to czynności wdrożeniowe operatora.
+
+## 2026-10-03 — odpowiedzi, diagnostyka i import PDF
+
+- 60 testów Python: istniejące API, nowe odpowiedzi, ścisłe cytaty, brak źródeł,
+  sprzeczny/niepewny BASAL, awaria/zajętość generatora, brak zapisu pytania,
+  dobór najnowszej publikacji, relacja zwrotna i wyłączenie pierwotnego HTML.
+- 6 przypadków agregacji pomiarów Node oraz 4 scenariusze prawdziwej przeglądarki:
+  cache, odzyskanie plików, laboratorium, odpowiedzi ze źródłami, awarie,
+  starsze API, prywatny eksport pomiarów, odporność renderowania na HTML,
+  szerokości 320/390/768/1440.
+- Rzeczywisty import 15 aktów w tymczasowej bazie przez ELI, bez zmian VPS:
+  14 powiązanych publikacji jednolitych i PDF ujednolicony Konstytucji;
+  15 źródeł dopuszczonych do odpowiedzi, zero nieudanych importów końcowych.
+  Wcześniejszy test pierwotnych HTML wykrył historyczne brzmienie; są wyłączone
+  z nowej ścieżki odpowiedzi. Naprawiono także negocjację typu PDF w ELI.
+- Pełna lokalna ścieżka przeglądarka → API → rzeczywiste PDF dla trzech pytań:
+  odstąpienie od umowy internetowej, okres wypowiedzenia i zwrot kaucji.
+  To sprawdzenie działania pobierania i wyświetlania, nie ekspercka ocena prawa.
+- Nowy generator i trzyopcjowa kontrola dowodów BASAL-a mają testy kontraktu
+  z odpowiedziami syntetycznymi. Nie zostały jeszcze uruchomione na VPS.
+  Wymagają oddzielnego odbioru rzeczywistego runtime, zasobów i jakości.
+- Test repozytorium jest kontrolą wskazanych typów plików/wzorców, nie pełnym
+  audytem bezpieczeństwa. Bazy, PDF, raporty i instrukcje agentów pozostają poza Git.

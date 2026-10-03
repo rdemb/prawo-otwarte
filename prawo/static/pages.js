@@ -29,8 +29,8 @@ window.PrawoPages = {
   async request(path, body) {
     const data = await this.load();
     if (this.apiBaseUrl) {
-      if (!/^\/api\/(status|search|intake|act)(\?|$)/.test(path)) throw new Error('Nieobsługiwana funkcja aplikacji.');
-      const options = {credentials:'omit', redirect:'error', signal:AbortSignal.timeout(path === '/api/intake' ? 40000 : 25000)};
+      if (!/^\/api\/(status|search|intake|act|answer)(\?|$)/.test(path)) throw new Error('Nieobsługiwana funkcja aplikacji.');
+      const options = {credentials:'omit', redirect:'error', signal:AbortSignal.timeout(path === '/api/answer' ? 130000 : path === '/api/intake' ? 40000 : 25000)};
       if (body) Object.assign(options, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
       let response;
       try { response = await fetch(this.apiBaseUrl + path, options); }

@@ -39,6 +39,10 @@ class Settings:
     basal_threshold: float = 0.80
     official_timeout: float = 12.0
     allowed_origins: tuple[str, ...] = ()
+    generator_enabled: bool = False
+    generator_url: str = "http://127.0.0.1:8767"
+    generator_model: str = "bielik"
+    generator_timeout: float = 90.0
 
     def __post_init__(self):
         for origin in self.allowed_origins:
@@ -56,4 +60,8 @@ class Settings:
             basal_threshold=float(os.getenv("PRAWO_BASAL_THRESHOLD", "0.80")),
             official_timeout=float(os.getenv("PRAWO_OFFICIAL_TIMEOUT", "12")),
             allowed_origins=tuple(value.strip() for value in os.getenv("PRAWO_ALLOWED_ORIGINS", "").split(",") if value.strip()),
+            generator_enabled=os.getenv("PRAWO_GENERATOR_ENABLED", "0") == "1",
+            generator_url=os.getenv("PRAWO_GENERATOR_URL", "http://127.0.0.1:8767"),
+            generator_model=os.getenv("PRAWO_GENERATOR_MODEL", "bielik"),
+            generator_timeout=float(os.getenv("PRAWO_GENERATOR_TIMEOUT", "90")),
         )

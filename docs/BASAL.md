@@ -60,3 +60,13 @@ w zweryfikowanej instalacji to `Remek/basal-1.0-1.5B`. Rewizja wag:
 Laboratorium udostępnia osiem syntetycznych przykładów i pomiary bieżącej karty.
 Etykiety nie przeszły jeszcze niezależnego przeglądu eksperckiego.
 [Definicje wskaźników i zakres danych](MEASUREMENTS.md).
+
+## Diagnostyka i kontrola dowodów
+
+Adapter ujawnia kandydata, rozkład wyników i próg również przy `basal_abstained`.
+Nie obniża progu 0.80, by wymusić odpowiedź. To pozwala odróżnić słabą przewagę
+kandydata od awarii modelu. Odpowiedzi nie wymagają wcześniejszej klasyfikacji.
+
+W nowym module BASAL pełni także rolę kontrolera zgodności objaśnień z cytatami
+i kontekstem. Polski model generatywny może przygotować tekst; BASAL podejmuje
+osobną decyzję typowaną. [Architektura odpowiedzi i warunki aktywacji](ANSWERS.md).

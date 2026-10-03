@@ -9,6 +9,8 @@ from urllib.parse import parse_qs
 
 from . import __version__
 from .cases import DOMAINS, BasalRouter, intake
+from .answers import AnswerEngine
+from .cli import CORE_ACTS
 from .settings import Settings
 from .sources import EliClient, SourceError, normalize_act, validate_eli
 from .store import Store
@@ -43,11 +45,12 @@ class RateLimit:
 
 
 class App:
-    def __init__(self, settings=None, eli=None, router=None):
+    def __init__(self, settings=None, eli=None, router=None, answerer=None):
         self.settings = settings or Settings.from_env()
         self.store = Store(self.settings.data_dir)
         self.eli = eli or EliClient(self.settings.official_timeout)
         self.router = router or BasalRouter(self.settings)
+        self.answerer = answerer or AnswerEngine(self.settings,self.store,self.router)
         self.limiter = RateLimit()
 
     @staticmethod
@@ -117,7 +120,7 @@ class App:
             if env.get("HTTP_ORIGIN") and not self.origin_allowed(env):
                 return 403, {"error":"Niedozwolone pochodzenie żądania."}, "application/json"
             if method == "OPTIONS":
-                methods = {"/api/status":"GET", "/api/search":"POST", "/api/act":"GET", "/api/intake":"POST"}
+                methods = {"/api/status":"GET", "/api/search":"POST", "/api/act":"GET", "/api/intake":"POST", "/api/answer":"POST"}
                 requested_headers = {value.strip().lower() for value in env.get("HTTP_ACCESS_CONTROL_REQUEST_HEADERS", "").split(",") if value.strip()}
                 if (not env.get("HTTP_ORIGIN") or path not in methods
                         or env.get("HTTP_ACCESS_CONTROL_REQUEST_METHOD") != methods[path]
@@ -130,7 +133,16 @@ class App:
                 return 200, {"version":__version__, "stage":"research_preview", "corpus":self.store.status(),
                              "sources":SOURCES,"recent":self.store.recent(),"domains":{k:v["label"] for k,v in DOMAINS.items()},
                              "basal":{"enabled":self.settings.basal_enabled,"verified_live":False},
-                             "eli_enabled":self.settings.allow_eli,"case_storage":False,"generative_answers":False}, "application/json"
+                             "eli_enabled":self.settings.allow_eli,"case_storage":False,
+                             "source_answers":True,"generative_answers":self.settings.generator_enabled,
+                             "core_sources":self.store.coverage(CORE_ACTS)}, "application/json"
+            if path == "/api/answer" and method == "POST":
+                data = self.read_json(env)
+                question = self.string(data,"question",10,2000)
+                event_date = self.string(data,"event_date",0,10)
+                if event_date and date.fromisoformat(event_date) > date.today():
+                    raise ValueError("Podaj datę zdarzenia z przeszłości lub pozostaw puste pole.")
+                return 200, self.answerer.answer(question,event_date), "application/json"
             if path == "/api/search" and method == "POST":
                 data = self.read_json(env)
                 query = self.string(data,"query",2,160)

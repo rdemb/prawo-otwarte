@@ -23,17 +23,23 @@ Wersja 0.1 oferuje:
 - wyszukiwanie **tytułów aktów** w oficjalnym ELI/API Sejmu;
 - filtry dziennika i roku publikacji oraz kolejne strony wyników;
 - listę wybranych źródeł z eksportem tytułów, identyfikatorów i oficjalnych linków;
-- lokalny katalog SQLite FTS5: metadane oraz dostępne, jawnie importowane teksty HTML;
+- lokalny katalog SQLite FTS5: metadane oraz jawnie importowane HTML i teksty wyodrębnione z PDF;
 - kopie źródeł z SHA-256, czasem pobrania i oryginalnym identyfikatorem ELI;
 - jawny stan pokrycia źródeł — początkowo lokalna baza jest pusta;
+- odpowiedzi oparte na fragmentach źródeł oraz opcjonalne lokalne objaśnienia z kontrolą BASAL-a;
+- importer 15 podstawowych aktów i najnowszych powiązanych tekstów jednolitych;
+- diagnostykę wyniku BASAL-a: kandydat, rozkład i próg, bez udawanej miary poprawności;
 - notatkę sprawy, pytania do wyjaśnienia i pobieranie notatki na urządzenie użytkownika;
 - opcjonalne kierowanie sprawy do dziedziny przez **lokalny BASAL**, z potwierdzeniem użytkownika;
 - laboratorium z 8 jawnymi przykładami, pomiarem czasu odpowiedzi i eksportem JSON;
 - statystyki bieżącej karty oraz lokalną ocenę przydatności propozycji;
 - ograniczenie zapytań, walidację danych i ograniczenie równoległych wywołań BASAL-a.
 
-Nie są jeszcze zaimplementowane: generatywna opinia prawna, rekonstrukcja prawa
-na datę zdarzenia, OCR/PDF, pełny import wszystkich źródeł, prawo miejscowe,
+Nowe odpowiedzi wymagają aktualizacji VPS, importu PDF i osobnego uruchomienia
+generatora. Publikacja Pages sama ich nie aktywuje. [Działanie i konfiguracja odpowiedzi](docs/ANSWERS.md).
+
+Nie są jeszcze zaimplementowane: zweryfikowana opinia prawna, rekonstrukcja prawa
+na datę zdarzenia, OCR, pełny import wszystkich źródeł, prawo miejscowe,
 import EUR-Lex i orzecznictwa, kalkulator terminów oraz merytoryczna walidacja
 porad przez prawników. Interfejs nie przedstawia tych funkcji jako działających.
 
@@ -100,7 +106,11 @@ Importer działa wyłącznie po jawnym uruchomieniu przez administratora. Aplika
 webowa nie udostępnia endpointu importu ani operacji administracyjnych.
 
 ```bash
-# Cztery przykładowe akty: Konstytucja, KC, KP, ustawa o prawach konsumenta.
+# Podstawowy korpus do odpowiedzi: 15 aktów, najnowsze powiązane publikacje.
+# Wymaga pdftotext (systemowy pakiet poppler-utils).
+python3 -m prawo import-core --texts
+
+# Cztery przykładowe akty, pierwotne HTML tylko do katalogu:
 # To identyfikatory źródeł, a nie ręcznie zatwierdzone wersje przepisów na dziś.
 python3 -m prawo bootstrap --texts
 python3 -m prawo status

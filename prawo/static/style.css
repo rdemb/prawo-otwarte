@@ -28,3 +28,26 @@ body{font-size:16px}.header{height:96px}.header nav{font-size:14px}.github-link{
 @media(max-width:760px){.hero h1{font-size:clamp(39px,12vw,50px);letter-spacing:-2px}.brand small{font-size:6.5px;letter-spacing:.7px;white-space:nowrap}}
 
 :root{--prawo-ui:ready}.startup-problem{border:2px solid #ab583d;background:#fff4e9;padding-top:22px;padding-bottom:22px;line-height:1.7}.startup-problem strong{font-size:19px}.startup-problem p{margin:10px 0;font-size:14px}.startup-problem a{font-size:13px;text-decoration:underline;display:inline-block;margin:12px}.lab-connection{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:17px 0;border-bottom:1px solid #bccfc1;margin-top:20px}.lab-connection p{font-size:13px}.lab-connection button{white-space:nowrap}.footer #build-label{font-size:10px}@media(max-width:760px){.lab-connection{align-items:flex-start;flex-direction:column;gap:5px}}
+
+/* Source-first answers: a readable chain from question to excerpt. */
+.answer-process { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; border-block:1px solid var(--line); padding:1rem 0; margin:1.5rem 0; font-size:.8rem; color:var(--muted); }
+#answer-form textarea { width:100%; margin-bottom:1rem; }
+#answer-form input[type=date] { margin-bottom:1rem; }
+.answer-card { margin-top:1.8rem; }
+.answer-card h4 { font-family:Georgia,serif; font-size:1.8rem; font-weight:400; margin:1rem 0; }
+.answer-claim { margin:1.5rem 0; padding:1.2rem; background:var(--paper); border:1px solid var(--line); border-radius:12px; }
+.answer-claim blockquote,.evidence-source blockquote { margin:1rem 0; padding-left:1rem; border-left:3px solid #a8834a; white-space:pre-wrap; font-size:.95rem; }
+.evidence-source { border-block-end:1px solid var(--line); padding:1.2rem 0; overflow-wrap:anywhere; }
+.evidence-source summary { cursor:pointer; font-weight:600; line-height:1.7; }
+.evidence-source .micro { overflow-wrap:anywhere; margin-top:1rem; }
+.routing-diagnostics { padding:1rem; background:#edf1eb; border-left:3px solid #a8834a; font-size:.9rem; }
+.core-coverage { margin-top:2rem; border:1px solid var(--line); border-radius:12px; padding:1.5rem; }
+.core-coverage summary { cursor:pointer; font-weight:600; }
+#core-source-list { list-style:none; padding:0; }
+#core-source-list li { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.5rem 1rem; padding:1rem 0; border-bottom:1px solid var(--line); }
+#core-source-list small { grid-column:1/-1; color:var(--muted); }
+.answer-measurements { padding:1.8rem; margin-block:1.5rem; border:1px solid var(--line); border-radius:14px; }
+.answer-measurements h3 { margin-top:0; }
+@media(max-width:600px) { .answer-process { grid-template-columns:1fr; gap:.5rem; } #core-source-list li { grid-template-columns:1fr; } .answer-claim { padding:1rem; } }
+
+.answer-claim { overflow-wrap:anywhere; }

@@ -22,13 +22,13 @@ usuwania pracy użytkownika. Aktualizacja z rozgrzanym cache jest testowana w CI
 1. **Przeglądarka** — statyczny HTML/CSS/JS, bez zewnętrznych fontów, reklam,
    telemetryki i trwałego magazynowania opisu sprawy. Notatka jest eksportowana
    lokalnie po kliknięciu użytkownika.
-2. **WSGI API** — wyszukiwanie, odczyt katalogu i wywiad. Żadnych operacji shell,
+2. **WSGI API** — wyszukiwanie, odczyt katalogu, wywiad i odpowiedzi ze źródeł. Żadnych operacji shell,
    uploadu dokumentów, kasowania danych, administrowania serwerem ani importu z sieci.
 3. **ELI adapter** — jedyny zewnętrzny endpoint aplikacji. Publiczna wyszukiwarka
    przesyła jawnie wpisaną frazę tytułową, nie opis sprawy. Nie przyjmuje dowolnych URL.
-4. **Katalog SQLite FTS5** — źródła, metadane, treść z HTML i checkpointy importu.
+4. **Katalog SQLite FTS5** — źródła, metadane, treść z HTML/PDF, wybrane publikacje, indeks fragmentów i checkpointy importu.
    Snapshoty są adresowane przez SHA-256 i nie są nadpisywane.
-5. **Lokalny BASAL** — nieufny klasyfikator; jeden równoległy request na proces,
+5. **Lokalny BASAL** — nieufny klasyfikator i kontroler zgodności dowodów; jeden równoległy request na proces,
    limit długości opisu, timeout i walidacja kategorii oraz rozkładu odpowiedzi.
 6. **CLI importera** — świadomie uruchamiana praca administratora, limit stron,
    opóźnienie, wznowienie i jawne błędy. Bez automatycznego masowego pobierania.
@@ -82,3 +82,10 @@ Przy skalowaniu trzeba wprowadzić zaufany proxy i wspólny limiter.
 SQLite wystarcza do pilota i importu sekwencyjnego. Wielu zapisujących importerów
 oraz duży ruch wymagają testów i ewentualnego przeniesienia katalogu do PostgreSQL.
 Przed rozszerzaniem stosu mierzymy p50/p95, pamięć RSS, IO i czas importu.
+
+## Odpowiedzi oparte na źródłach
+
+Opcjonalny, osobny generator działa tylko na loopback i nie ma narzędzi ani dostępu
+do sieci przez API aplikacji. Aplikacja sprawdza cytaty, a BASAL zgodność
+objaśnień z cytowanymi fragmentami. Brak potwierdzenia pozostawia same źródła.
+Szczegóły, wybór publikacji PDF i granice walidacji: [ANSWERS.md](ANSWERS.md).

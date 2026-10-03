@@ -17,8 +17,10 @@ metadanych i tekstów, zamiast marketingowej deklaracji „całe prawo”.
 
 Publiczny katalog może wyszukiwać tytuły przez API Sejmu bez pełnego lokalnego
 importu. Wyniki nie są automatycznie zapisywane. Pełnotekstowe wyszukiwanie lokalne
-obejmuje tylko zaimportowane HTML. Pliki PDF, skany, załączniki i tabele wymagające
-OCR nie są jeszcze przetwarzane.
+obejmuje zaimportowane HTML i ekstrakty PDF. Importer `import-core --texts` dobiera
+powiązane publikacje jednolite dla 15 podstawowych aktów. Odpowiedzi korzystają
+wyłącznie z wybranych PDF, nigdy z pierwotnego HTML. Skany i OCR nie są obsługiwane.
+[Reguły wyboru publikacji i ograniczenia ekstrakcji](ANSWERS.md).
 
 ## Wersje i zmiany
 
