@@ -43,6 +43,7 @@ jobs:
         env:
           PRAWO_TEST_SCREENSHOT_DIR: /tmp/prawo-ui-checks
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: interface-checks
           path: /tmp/prawo-ui-checks/*.png

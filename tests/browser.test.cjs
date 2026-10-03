@@ -34,6 +34,7 @@ before(async () => {
 });
 after(async () => { if (browser) await browser.close(); if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); } if (root) fs.rmSync(root,{recursive:true,force:true}); });
 const waitForText = (page, selector, text) => page.waitForFunction(({selector,text}) => document.querySelector(selector)?.textContent.includes(text), {selector,text});
+const overflowDetails = page => page.evaluate(() => [...document.querySelectorAll('body *')].filter(n => n.getBoundingClientRect().right > innerWidth + .5).slice(0,12).map(n => ({tag:n.tagName,id:n.id,cls:n.className,right:Math.round(n.getBoundingClientRect().right),width:Math.round(n.getBoundingClientRect().width)})));
 const ready = page => page.waitForFunction(() => document.documentElement.dataset.appReady === 'true');
 async function screenshot(page, name) {
   if (!process.env.PRAWO_TEST_SCREENSHOT_DIR) return;
@@ -61,8 +62,9 @@ test('returning visitor loads a complete release despite cached unversioned scri
     assert.ok((await page.locator('#lab-connection-status').textContent()).includes('bez modelu'));
     for (const width of [320,390,768,1440]) {
       await page.setViewportSize({width,height:900});
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false,`Overflow at ${width}`);
-      if (width===390 || width===1440) await screenshot(page,'home-'+width);
+      await screenshot(page,'home-'+width);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false,`Overflow at ${width}: ${JSON.stringify(await overflowDetails(page))}`);
+
     }
     await page.locator('#open-example').click();
     assert.equal(await page.locator('#answer-tab').getAttribute('aria-selected'),'true');
@@ -154,7 +156,7 @@ test('answers show evidence, remain compatible with older API and export only an
     assert.equal(await page.locator('#evidence-S1').getAttribute('open'),'');
     assert.equal(await page.locator('#answer-wait').isHidden(),true);
     await page.setViewportSize({width:390,height:844});await screenshot(page,'answer-mobile');
-    for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Answer overflow '+width);}
+    for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Answer overflow '+width+JSON.stringify(await overflowDetails(page)));}
     if(process.env.PRAWO_TEST_SCREENSHOT) {await page.setViewportSize({width:390,height:844});await page.locator('#answer-panel').screenshot({path:process.env.PRAWO_TEST_SCREENSHOT});}
     const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#download-answer-metrics').click()]);
     const exported=fs.readFileSync(await download.path(),'utf8');assert.ok(!exported.includes(secret));assert.ok(!exported.includes(source.text));assert.equal(JSON.parse(exported).rows.length,1);
