@@ -42,8 +42,13 @@ interpretacji. Status aktu w ELI nie weryfikuje stanu prawnego konkretnej sprawy
 
 Wersja statyczna zachowuje wygląd aplikacji i oferuje wyszukiwanie w ELI bezpośrednio
 z przeglądarki oraz notatkę sprawy tworzoną na urządzeniu użytkownika. Nie przesyła
-opisu sprawy do modelu. Lokalna baza i BASAL wymagają osobnego backendu na VPS;
-nie są przedstawiane jako podłączone do wersji Pages.
+opisu sprawy do modelu. Jest to domyślny tryb, gdy nie ustawiono adresu API.
+Lokalną bazę i BASAL można podłączyć do Pages przez backend HTTPS na VPS.
+Instrukcja konfiguracji, testów i wycofania połączenia:
+[Dostęp publiczny](docs/DEPLOYMENT.md#5-dostęp-publiczny).
+W trybie połączonym opis trafia do serwera projektu; strona wyświetla odpowiednią
+informację o danych i stan odczytany z aplikacji. Samo włączenie integracji
+nie potwierdza trafności modelu ani kompletności prawa.
 
 Lista źródeł i notatka pozostają w pamięci karty — odświeżenie je usuwa. Użytkownik
 może pobrać je do pliku. Rok w filtrze jest rokiem publikacji, nie datą obowiązywania.

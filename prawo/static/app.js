@@ -56,6 +56,7 @@ const sourceFallback = [
   {id:'eli-du', name:'Dziennik Ustaw', provider:'ELI · Kancelaria Sejmu', stage:'unknown', url:'https://eli.gov.pl/eli/DU', scope:'Stan podłączenia będzie widoczny po połączeniu z aplikacją.'},
   {id:'eli-mp', name:'Monitor Polski', provider:'ELI · Kancelaria Sejmu', stage:'unknown', url:'https://eli.gov.pl/eli/MP', scope:'Stan podłączenia będzie widoczny po połączeniu z aplikacją.'}
 ];
+let serviceReady = false;
 function renderSources(sources) {
   const grid = $('#source-grid'); grid.replaceChildren();
   const stages = {connected:'DOSTĘPNE', planned:'W PLANIE', reference:'ODNOŚNIKI', unknown:'NIEZWERYFIKOWANE'};
@@ -97,6 +98,11 @@ async function loadStatus() {
       $('#model-connection-note').textContent = modelNote;
       $('#faq-model-copy').textContent = modelNote;
       $('#faq-privacy-copy').textContent = 'Opis obsługuje serwer tej instalacji; przy automatycznym wyborze dziedziny i włączonym BASAL-u także jego lokalny model. Aplikacja nie zapisuje opisu w bazie. Do API Sejmu trafia wyłącznie fraza wyszukiwania i wybrane filtry.';
+      $('#intake-form .micro').textContent = $('#faq-privacy-copy').textContent;
+      $('#method-privacy-copy').textContent = 'Nie wymagamy konta. Opis jest przetwarzany na serwerze projektu, bez zapisu do bazy aplikacji. Przy automatycznym wyborze dziedziny obsługuje go również lokalny BASAL. Nie wpisuj danych identyfikujących osoby.';
+      $('#roadmap-tools-copy').textContent = 'Wyszukiwanie ELI, lokalny katalog, lista źródeł i notatka sprawy. Bez konta. Opis przetwarza serwer projektu.';
+      $('#roadmap-model-state').textContent = modelEnabled ? 'DOSTĘPNE W TEJ INSTALACJI' : 'DO URUCHOMIENIA';
+      $('#roadmap-model-copy').textContent = modelEnabled ? 'BASAL proponuje dziedzinę sprawy. Wynik może być niejednoznaczny; możesz samodzielnie wybrać dziedzinę. Trafność prawna wymaga dalszych testów.' : modelNote;
     }
     renderSources(status.sources);
     for (const [key, label] of Object.entries(status.domains)) {
@@ -105,8 +111,15 @@ async function loadStatus() {
     if (!status.eli_enabled) {
       $('input[value="eli"]').disabled = true; $('input[value="local"]').checked = true; updateSearchPrivacy();
     }
+    serviceReady = true;
   } catch (error) {
     $('#connection-status').textContent = error.message;
+    $('#model-connection-state').textContent = 'BRAK POŁĄCZENIA';
+    $('#model-connection-note').textContent = 'Nie udało się odczytać stanu aplikacji. Nie potwierdzamy dostępności modelu. Odśwież stronę, aby spróbować ponownie.';
+    $('#faq-model-copy').textContent = $('#model-connection-note').textContent;
+    if (window.PrawoPages?.apiBaseUrl) {
+      $('#faq-privacy-copy').textContent = 'Ta strona jest skonfigurowana do wysyłania zapytań i opisu na serwer projektu, ale obecnie nie udało się połączyć. Formularz nie został wysłany.';
+    }
     renderSources(sourceFallback);
   }
 }
@@ -227,8 +240,13 @@ const today = new Date(); $('#event-date').max = `${today.getFullYear()}-${Strin
 $('#intake-form').addEventListener('submit', async event => {
   event.preventDefault();
   const button = $('#intake-form button[type="submit"]'); button.disabled = true;
+  await statusReady;
+  if (!serviceReady) {
+    feedback('#intake-feedback', 'Nie udało się potwierdzić połączenia. Opis pozostał w formularzu. Odśwież stronę i spróbuj ponownie.', true);
+    button.disabled = false; return;
+  }
   const description = $('#description').value.trim();
-  const waiting = $('#domain').value === 'unknown' && !window.PrawoPages
+  const waiting = $('#domain').value === 'unknown' && (!window.PrawoPages || window.PrawoPages.apiBaseUrl)
     ? 'Rozpoznajemy dziedzinę i porządkujemy pytania. Może to potrwać do 40 sekund.'
     : 'Porządkujemy pytania…';
   feedback('#intake-feedback', waiting); $('#intake-results').replaceChildren();

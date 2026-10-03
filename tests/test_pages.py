@@ -1,4 +1,5 @@
 import tempfile
+import json
 import unittest
 from pathlib import Path
 
@@ -22,3 +23,17 @@ class PagesBuildTests(unittest.TestCase):
             private.write_text("do not publish")
             with self.assertRaises(ValueError): build(folder)
             self.assertEqual(private.read_text(),"do not publish")
+
+    def test_api_is_disabled_by_default_and_explicitly_configurable(self):
+        for configured,expected in [('', ''),('https://api.example.org/', 'https://api.example.org')]:
+            with tempfile.TemporaryDirectory() as folder:
+                build(folder,configured)
+                data = json.loads((Path(folder) / 'pages-data.json').read_text())
+                self.assertEqual(data['api_base_url'],expected)
+
+    def test_unsafe_api_configuration_is_rejected_before_writing(self):
+        for address in ['http://api.example.org','https://127.0.0.1','https://server.local','https://api.example.org:8766',
+                        'https://user:pass@api.example.org','https://api.example.org/api','https://api.example.org?token=secret']:
+            with self.subTest(address=address),tempfile.TemporaryDirectory() as folder:
+                with self.assertRaises(ValueError): build(folder,address)
+                self.assertEqual(list(Path(folder).iterdir()),[])

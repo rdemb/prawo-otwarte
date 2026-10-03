@@ -72,11 +72,51 @@ Backup na tym samym dysku zabezpiecza przed pomyłką podczas migracji, nie awar
 
 ## 5. Dostęp publiczny
 
-Statyczną stronę publikuje osobny workflow GitHub Pages opisany w README.
-Ta wersja wyszukuje bezpośrednio w ELI i tworzy notatkę w przeglądarce.
-Nie jest jeszcze połączona z backendem VPS. Podłączenie go wymaga adresu HTTPS,
-świadomej konfiguracji zaufanego origin, limitów oraz zmiany adaptera strony;
-nie wystarczy wstawić niezabezpieczonego adresu IP do frontendu.
+Statyczną stronę publikuje workflow GitHub Pages opisany w README.
+Bez konfiguracji API wyszukuje bezpośrednio w ELI i tworzy notatkę w przeglądarce.
+Adapter obsługuje także backend HTTPS: adres ustala operator podczas budowania,
+nigdy przez parametr URL, localStorage ani pole użytkownika.
+
+Kolejność podłączenia:
+
+1. Wdróż aktualne `main` na VPS z zachowaniem własnego środowiska, danych i
+   ustawień BASAL-a. Wykonaj kopię oraz testy przed restartem aplikacji.
+2. Skonfiguruj posiadaną domenę, DNS i reverse proxy HTTPS do `127.0.0.1:8080`.
+   Potwierdź prawidłowy certyfikat i `/api/status` z maszyny poza VPS.
+3. W prywatnym pliku środowiska VPS ustaw
+   `PRAWO_ALLOWED_ORIGINS=https://rdemb.github.io` i zrestartuj aplikację.
+   Origin to schemat i host, **bez** `/prawo-otwarte/` i końcowego ukośnika.
+   Dla innych instalacji podaj dokładne adresy HTTPS, oddzielone przecinkiem.
+   Nie używaj `*`. Inne strony tego samego konta GitHub mają ten sam origin;
+   CORS nie rozróżnia ścieżek i nie zastępuje uwierzytelniania ani limitowania.
+4. Sprawdź preflight `OPTIONS /api/intake` z tym origin, metodą `POST` i nagłówkiem
+   `Content-Type`. Oczekiwane: 204 i dokładny `Access-Control-Allow-Origin`.
+   Obcy origin ma otrzymać 403 bez tego nagłówka. Potwierdź również nagłówki
+   CORS dla odpowiedzi 400, 429 i 503, aby przeglądarka mogła pokazać błąd.
+5. Dopiero po testach dodaj w GitHub: Settings → Secrets and variables → Actions
+   → Variables → **Repository variable** `PRAWO_API_BASE_URL`, np.
+   `https://api.twoja-domena.pl` (zastąp własnym adresem). To publiczny adres,
+   nie hasło ani klucz. Użyj domyślnego portu HTTPS i nie dopisuj `/api`.
+6. Uruchom Actions → Publish website → Run workflow na `main`. Zmiana samej
+   zmiennej nie przebudowuje istniejącej strony. Builder zapisze adres w
+   publicznym `pages-data.json`; brak zmiennej zachowuje tryb samodzielny.
+7. Na publicznej stronie sprawdź status, lokalne wyszukiwanie, ręczny wywiad,
+   pojedyncze rzeczywiste wywołanie BASAL-a, jego niepewność/zajętość oraz awarię
+   API. Potwierdź komunikaty o wysyłaniu opisu na serwer, widok telefonu i brak
+   zapisu syntetycznego opisu w bazie i logach. Stan „klasyfikacja włączona” jest
+   konfiguracją aplikacji, a nie ciągłym testem zdrowia modelu.
+
+Wycofanie: usuń zmienną `PRAWO_API_BASE_URL` i ponownie uruchom publikację.
+Nowo wczytana strona wróci do samodzielnego ELI i lokalnej notatki; otwarte karty
+wymagają odświeżenia. Nie usuwaj przy tym bazy ani modelu. Gdy odczyt stanu
+skonfigurowanego API się nie powiedzie, formularz wstrzymuje wysłanie opisu.
+Nie przełącza się po cichu na inny serwer i nie ponawia automatycznie żądania.
+
+Budowanie ręczne z adresem API:
+`python -m scripts.build_pages --output _site --api-base-url https://api.twoja-domena.pl`.
+Bez tej opcji i zmiennej środowiskowej `PRAWO_API_BASE_URL` pozostaje tryb
+samodzielny. Katalog wyjściowy musi być pusty; publikuje się wyłącznie siedem
+dozwolonych zasobów, nigdy repozytorium w całości.
 
 `deploy/Caddyfile.example` jest szablonem. Zastąp `prawo.example.org` posiadaną
 domeną, sprawdź DNS, istniejący reverse proxy i konflikt portów 80/443. Nie używaj
@@ -91,6 +131,14 @@ własności wszystkich warstw infrastruktury.
 Gunicorn nie zastępuje reverse proxy. Limity zapytań i zasobów w szablonie są
 ustawieniami pilota, nie gwarancją obsługi określonej liczby osób. Sprawdź timeouty,
 koszt najdłuższego opisu, wzrost bazy, kolejkę i zachowanie przy restarcie modelu.
+Za reverse proxy aplikacja widzi wspólny adres połączenia: limit 30/min może być
+wspólny dla wszystkich odwiedzających. Nie ufa nagłówkowi `X-Forwarded-For`
+dostarczonemu przez klienta. Przed zwiększeniem ruchu wprowadź limitowanie na
+zaufanym proxy i wykonaj pomiary; nie podnoś limitów tylko po to, by ominąć test.
+
+Dokumentacja: [zmienne GitHub Actions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables),
+[HTTPS w Caddy](https://caddyserver.com/docs/quick-starts/https),
+[CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS).
 
 ### Budżet czasu klasyfikacji na CPU
 
