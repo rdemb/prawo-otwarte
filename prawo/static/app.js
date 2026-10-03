@@ -31,7 +31,7 @@ async function request(path, body) {
 function feedback(id, message, error = false) {
   const node = $(id); node.textContent = message; node.classList.toggle('error', error);
 }
-const tabs = ['search', 'answer', 'intake', 'saved'];
+const tabs = ['answer', 'search', 'intake', 'saved'];
 function setTab(name, focus = false) {
   for (const key of tabs) {
     const active = key === name;
@@ -41,6 +41,7 @@ function setTab(name, focus = false) {
     $(`#${key}-panel`).hidden = !active;
   }
   if (focus) $(`#${name}-tab`).focus();
+  else reveal($(`#${name}-panel`));
 }
 for (const name of tabs) {
   $(`#${name}-tab`).addEventListener('click', () => setTab(name));
@@ -368,10 +369,31 @@ $('#run-benchmark').addEventListener('click', async () => {
   } catch (error) { feedback('#benchmark-feedback', error.message, true); }
   finally { setIntakeBusy(false); }
 });
+const answerExamples = {
+  work:'Co Kodeks pracy mówi o uzasadnieniu wypowiedzenia umowy o pracę?',
+  consumer:'Co ustawa o prawach konsumenta mówi o odstąpieniu od umowy zawartej na odległość?',
+  administrative:'Jakie elementy powinna zawierać decyzja według Kodeksu postępowania administracyjnego?',
+  property:'Co ustawa o ochronie praw lokatorów mówi o zwrocie kaucji po zakończeniu najmu?'
+};
+function reveal(node) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  node.getAnimations().forEach(animation => animation.cancel());
+  node.animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],
+    {duration:200,easing:'cubic-bezier(0.23, 1, 0.32, 1)'});
+}
+function openAnswer(question='') {
+  setTab('answer');
+  if (question && !$('#answer-question').value.trim()) $('#answer-question').value = question;
+  else if (question) feedback('#answer-feedback','Zachowaliśmy Twoje pytanie. Wyczyść pole, jeśli chcesz wstawić przykład.');
+  $('#pracownia').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+  $('#answer-question').focus({preventScroll:true});
+}
+document.querySelectorAll('[data-open-answer]').forEach(node=>node.addEventListener('click',event=>{event.preventDefault();openAnswer();}));
 let heroSample = sampleCases[0];
 document.querySelectorAll('[data-hero-sample]').forEach(button => button.addEventListener('click', () => {
   heroSample = sampleCases.find(sample => sample.id === button.dataset.heroSample);
-  $('#hero-sample-text').textContent = '„' + heroSample.text + '”';
+  $('#hero-sample-text').textContent = '„' + answerExamples[heroSample.id] + '”';
+  reveal($('#hero-sample-text'));
   document.querySelectorAll('[data-hero-sample]').forEach(node => node.setAttribute('aria-pressed', String(node === button)));
 }));
 function descriptionChanged() {
@@ -384,12 +406,7 @@ function descriptionChanged() {
 $('#description').addEventListener('input', descriptionChanged);
 $('#event-date').addEventListener('input', descriptionChanged);
 $('#domain').addEventListener('change', descriptionChanged);
-$('#open-example').addEventListener('click', () => {
-  setTab('intake'); $('#pracownia').scrollIntoView();
-  if (!$('#description').value.trim()) { $('#description').value = heroSample.text; $('#domain').value = 'unknown'; descriptionChanged(); }
-  else feedback('#intake-feedback', 'Twój opis jest już w formularzu. Wyczyść go, jeśli chcesz otworzyć wybrany przykład.');
-  $('#description').focus({preventScroll:true});
-});
+$('#open-example').addEventListener('click', () => openAnswer(answerExamples[heroSample.id]));
 $('#intake-form').addEventListener('submit', async event => {
   event.preventDefault();
   if (intakeBusy) return;
@@ -416,7 +433,13 @@ $('#intake-form').addEventListener('submit', async event => {
     const reason = element('p', data.routing.reason); card.append(reason);
     if (routingDiagnostics(data.routing)) card.append(element('p', routingDiagnostics(data.routing), 'routing-diagnostics'));
     const ask = element('button', 'Przejdź do odpowiedzi ze źródeł →', 'text-button'); ask.type = 'button';
-    ask.addEventListener('click', () => { setTab('answer'); if (!$('#answer-question').value.trim()) $('#answer-question').value = payload.description.slice(0,2000); $('#answer-question').focus(); }); card.append(ask);
+    ask.addEventListener('click', () => {
+      if (!$('#answer-question').value.trim()) {
+        $('#answer-date').value = payload.event_date || '';
+        if (payload.event_date) $('.answer-date-help').open = true;
+      }
+      openAnswer(payload.description.slice(0,2000));
+    }); card.append(ask);
     let confirmed = data.routing.method === 'user';
     if (data.routing.method === 'basal' && data.routing.domain !== 'unknown') {
       const controls = element('div', undefined, 'confirmation-controls');
@@ -468,6 +491,8 @@ function updateAnswerCapability(status) {
     ? 'Ta instalacja wymaga aktualizacji serwera, aby uruchomić odpowiedzi. Wyszukiwanie aktów i notatka są dostępne w sąsiednich zakładkach.'
     : status.generative_answers ? 'Dostępne: fragmenty źródeł, lokalne generowanie objaśnień i kontrola dowodów przez BASAL. Dostępność modeli sprawdzimy podczas zapytania.'
     : 'Dostępne: wyszukiwanie fragmentów przepisów. Generator objaśnień nie jest jeszcze włączony w tej instalacji.';
+  $('#answer-source-count').textContent = Number.isInteger(status?.corpus?.answer_source_count) ? status.corpus.answer_source_count.toLocaleString('pl-PL') : '—';
+  $('#passage-count').textContent = Number.isInteger(status?.corpus?.passage_count) ? status.corpus.passage_count.toLocaleString('pl-PL') : '—';
   const list = $('#core-source-list'); list.replaceChildren();
   const labels = {text:'Tekst dostępny', metadata:'Tylko metadane', stale:'Tekst wymaga aktualizacji', missing:'Do zaimportowania'};
   if (!Array.isArray(status?.core_sources)) list.append(element('li', 'Lista pokrycia wymaga aktualizacji API.'));
@@ -494,44 +519,44 @@ $('#answer-form').addEventListener('submit', async event => {
   if (payload.question.length < 10) { feedback('#answer-feedback', 'Wpisz przynajmniej 10 znaków pytania.',true); return; }
   answerBusy = true; $('#answer-submit').disabled = true; $('#answer-results').replaceChildren(); $('#answer-results').setAttribute('aria-busy','true');
   const started = performance.now();
+  $('#answer-wait').hidden = false; $('#answer-seconds').textContent = '0 s';
   feedback('#answer-feedback','Szukamy fragmentów. Jeśli generator jest włączony, odpowiedź może potrwać do dwóch minut.');
-  const timer = setInterval(() => feedback('#answer-feedback', `Praca nad odpowiedzią… ${Math.floor((performance.now()-started)/1000)} s. Pytanie pozostaje w formularzu.`),1000);
+  const timer = setInterval(() => { const elapsed=Math.floor((performance.now()-started)/1000); $('#answer-seconds').textContent=elapsed+' s'; if (elapsed===30 || elapsed===60 || elapsed===90) feedback('#answer-feedback',`Oczekiwanie trwa ${elapsed} sekund. Modele pracują lokalnie; pytanie pozostaje w formularzu.`); },1000);
   try {
     const data = await request('/api/answer',payload), ms = performance.now()-started;
     if (data.kind !== 'source_answer' || !Array.isArray(data.sources) || !Array.isArray(data.claims)) throw new Error('Nieprawidłowy format odpowiedzi.');
     updateAnswerMetrics({at:new Date().toISOString(), ms:Math.round(ms), mode:data.mode, sourceCount:data.sources.length, generationStatus:data.generation?.status, generationMs:data.generation?.elapsed_ms ?? null, evidence:data.evidence_check?.verdict, claimCount:data.claims.length});
     if (payload.question !== $('#answer-question').value.trim() || payload.event_date !== $('#answer-date').value) { feedback('#answer-feedback','Pytanie zmieniło się podczas oczekiwania. Wyślij aktualną wersję.'); return; }
     const card = element('article',undefined,'answer-card');
-    card.append(element('span', `${data.mode === 'draft' ? 'Objaśnienie z cytatami' : data.mode === 'no_sources' ? 'Potrzebne dodatkowe źródła' : 'Fragmenty do sprawdzenia'} · ${seconds(ms)}`, 'result-meta'), element('h4', 'Odpowiedź zaczyna się od dowodu.'),element('p',data.message));
+    card.append(element('span', `${data.mode === 'draft' ? 'Objaśnienie z cytatami' : data.mode === 'no_sources' ? 'Potrzebne dodatkowe źródła' : 'Fragmenty do sprawdzenia'} · ${seconds(ms)}`, 'result-meta'), element('h4', data.mode === 'draft' ? 'Objaśnienie i jego podstawa' : data.mode === 'no_sources' ? 'Potrzebujemy innych źródeł' : 'Przeczytaj znalezione przepisy'),element('p',data.message));
     if (data.mode === 'draft') for (const claim of data.claims) {
-      const block = element('div',undefined,'answer-claim'); block.append(element('p',claim.explanation),element('blockquote',claim.quote));
+      const block = element('div',undefined,'answer-claim'); block.append(element('small','Objaśnienie robocze · bez oceny prawnika'),element('p',claim.explanation),element('blockquote',claim.quote));
       const link = element('a','Sprawdź fragment ['+claim.source_id+'] ↓'); link.href='#evidence-'+claim.source_id; block.append(link); card.append(block);
     }
-    card.append(element('p',data.limitation,'notice'));
+    const limitation=element('details',undefined,'answer-limitations'); limitation.append(element('summary','Zakres i ograniczenia wyniku'),element('p',data.limitation,'notice')); limitation.open=true; card.append(limitation);
+    if (data.generation?.status && data.mode !== 'draft') {
+      const reasons={date_unverified:'Podano datę sprawy. Dostępne są fragmenty; wersja prawa dla tej daty nie została odtworzona.',busy:'Model jest zajęty. Źródła są dostępne; spróbuj ponownie później.',unavailable:'Generator jest chwilowo niedostępny. Możesz przeczytać znalezione fragmenty.',invalid_output:'Objaśnienie nie spełniło wymagań cytowania. Pokazujemy źródła.'};
+      const reason=reasons[data.generation.status]; if(reason)card.append(element('p',reason,'notice'));
+    }
     if (data.event_date) card.append(element('p',`Podana data: ${data.event_date}. Wersja prawa dla tej daty nie została zweryfikowana.`,'micro'));
     for (const source of data.sources) {
-      const details = element('details',undefined,'evidence-source'); details.id='evidence-'+source.id; details.open = data.sources.length === 1;
+      const details = element('details',undefined,'evidence-source'); details.id='evidence-'+source.id; details.open = source === data.sources[0];
       details.append(element('summary',`[${source.id}] ${source.label} · ${source.title}`),element('blockquote',source.text),externalLink('Otwórz oficjalną publikację ↗',source.source_url),element('p',`ELI: ${source.eli} · stan prawny publikacji: ${source.legal_status_date || 'nie podano'} (późniejsze zmiany wymagają sprawdzenia) · pobrano: ${dateText(source.text_fetched_at)} · SHA-256 tekstu: ${source.text_sha256}`,'micro')); card.append(details);
     }
     const actions=element('div',undefined,'note-actions');
     const save=element('button','Pobierz odpowiedź i źródła ↓','button outline');save.type='button';
     save.addEventListener('click',()=>downloadText('prawo-otwarte-odpowiedz.json',JSON.stringify({question:payload.question,...data},null,2)));
     const search=element('button','Wyszukaj więcej w ELI →','text-button'); search.type='button'; search.addEventListener('click',()=>{setTab('search');$('#query').focus();});
-    actions.append(save,search);card.append(actions);$('#answer-results').append(card);feedback('#answer-feedback',`Gotowe w ${seconds(ms)}. Sprawdź źródła i ograniczenia poniżej.`);
+    actions.append(save,search);card.append(actions);$('#answer-results').append(card);reveal(card);feedback('#answer-feedback',`Gotowe w ${seconds(ms)}. Sprawdź źródła i ograniczenia poniżej.`);
   } catch(error) { updateAnswerMetrics({at:new Date().toISOString(),ms:Math.round(performance.now()-started),mode:'error',generationMs:null});feedback('#answer-feedback',error.message,true); }
-  finally {clearInterval(timer);answerBusy=false;$('#answer-submit').disabled=!answersAvailable;$('#answer-results').setAttribute('aria-busy','false');}
+  finally {clearInterval(timer);$('#answer-wait').hidden=true;answerBusy=false;$('#answer-submit').disabled=!answersAvailable;$('#answer-results').setAttribute('aria-busy','false');}
 });
 
 renderMeasurements();
 $('#publication-year').max = String(new Date().getFullYear());
 let statusReady = loadStatus();
 for (const id of ['refresh-status','lab-refresh']) $('#' + id).addEventListener('click', () => { if (!$('#refresh-status').disabled) statusReady = loadStatus(); });
-document.querySelectorAll('[data-domain]').forEach(button => button.addEventListener('click', async () => {
-  await statusReady;
-  setTab('intake'); $('#domain').value = button.dataset.domain; descriptionChanged();
-  $('#pracownia').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
-  $('#description').focus({preventScroll:true});
-}));
+document.querySelectorAll('[data-domain]').forEach(button => button.addEventListener('click', () => openAnswer(answerExamples[button.dataset.domain])));
 
 $('#build-label').textContent = 'Wydanie: ' + ($('meta[name="prawo-build"]')?.content || 'lokalne');
 document.documentElement.dataset.appReady = 'true';

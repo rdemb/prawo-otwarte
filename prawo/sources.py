@@ -115,6 +115,28 @@ class EliClient:
     def __init__(self, timeout=12, fetcher=fetch_bytes):
         self.timeout, self.fetcher = timeout, fetcher
 
+    def publishers(self):
+        """Discover available DU/MP years from ELI instead of guessing a range."""
+        from datetime import date
+        url = ELI_BASE + "/acts"
+        data = decode_json(self.fetcher(url, timeout=self.timeout))
+        if not isinstance(data, list):
+            raise SourceError("Nieprawidłowy katalog dzienników ELI.")
+        result = []
+        for item in data:
+            if not isinstance(item, dict) or item.get("code") not in {"DU", "MP"}:
+                raise SourceError("Nieobsługiwany dziennik w katalogu ELI.")
+            years, count = item.get("years"), item.get("actsCount")
+            if (not isinstance(years, list) or not years or
+                any(type(y) is not int or not 1900 <= y <= date.today().year for y in years) or
+                type(count) is not int or count < 0):
+                raise SourceError("Nieprawidłowy zakres katalogu ELI.")
+            result.append({"publisher":item["code"], "years":sorted(set(years), reverse=True),
+                           "reported_total":count})
+        if {item["publisher"] for item in result} != {"DU", "MP"} or len(result) != 2:
+            raise SourceError("Niepełny katalog dzienników ELI.")
+        return {"publishers":result, "source_url":url, "fetched_at":now(), "complete_polish_law":False}
+
     def search(self, title="", *, publisher=None, year=None, offset=0, limit=20):
         params = {"title": title, "limit": max(1, min(limit, 100)), "offset": max(0, offset),
                   "sortBy": "promulgation", "sortDir": "desc"}

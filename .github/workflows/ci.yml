@@ -40,3 +40,11 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+        env:
+          PRAWO_TEST_SCREENSHOT_DIR: /tmp/prawo-ui-checks
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: interface-checks
+          path: /tmp/prawo-ui-checks/*.png
+          retention-days: 7

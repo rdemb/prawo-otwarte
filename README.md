@@ -28,6 +28,7 @@ Wersja 0.1 oferuje:
 - jawny stan pokrycia źródeł — początkowo lokalna baza jest pusta;
 - odpowiedzi oparte na fragmentach źródeł oraz opcjonalne lokalne objaśnienia z kontrolą BASAL-a;
 - importer 15 podstawowych aktów i najnowszych powiązanych tekstów jednolitych;
+- wznawialną enumerację metadanych wszystkich roczników DU/MP z budżetem stron;
 - diagnostykę wyniku BASAL-a: kandydat, rozkład i próg, bez udawanej miary poprawności;
 - notatkę sprawy, pytania do wyjaśnienia i pobieranie notatki na urządzenie użytkownika;
 - opcjonalne kierowanie sprawy do dziedziny przez **lokalny BASAL**, z potwierdzeniem użytkownika;
@@ -61,6 +62,7 @@ nie potwierdza trafności modelu ani kompletności prawa.
 
 Pomiary nie zawierają opisów spraw i nie są wysyłane do analityki.
 [Metoda pomiarów i ograniczenia](docs/MEASUREMENTS.md).
+[Zasób i import źródeł](docs/CORPUS.md) · [Interfejs i dostępność](docs/INTERFACE.md).
 
 Lista źródeł i notatka pozostają w pamięci karty — odświeżenie je usuwa. Użytkownik
 może pobrać je do pliku. Rok w filtrze jest rokiem publikacji, nie datą obowiązywania.

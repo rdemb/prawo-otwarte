@@ -10,11 +10,12 @@ from prawo.settings import public_https_origin
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_FILES = ("index.html", "style.css", "app.js", "metrics.js", "favicon.svg", "pages.js", "boot.js")
+PUBLIC_BINARY_FILES = ("onest-latin.ttf",)
 
 
 def asset_name(name, content):
     path = Path(name)
-    digest = hashlib.sha256(content.encode()).hexdigest()[:16]
+    digest = hashlib.sha256(content.encode() if isinstance(content, str) else content).hexdigest()[:16]
     return f"{path.stem}.{digest}{path.suffix}"
 
 
@@ -25,6 +26,11 @@ def build(destination, api_base_url=""):
         raise ValueError("Build destination must be empty; do not mix private files with the site.")
     destination.mkdir(parents=True, exist_ok=True)
     files = {name:(ROOT / "prawo" / "static" / name).read_text() for name in PUBLIC_FILES}
+    for name in PUBLIC_BINARY_FILES:
+        content = (ROOT / "prawo" / "static" / name).read_bytes()
+        versioned = asset_name(name, content)
+        (destination / versioned).write_bytes(content)
+        files["style.css"] = files["style.css"].replace(f"./{name}", f"./{versioned}")
     sources = json.loads((ROOT / "prawo" / "config" / "sources.json").read_text())
     for source in sources:
         if not api_base_url and source["id"] in {"eli-du", "eli-mp"}:
