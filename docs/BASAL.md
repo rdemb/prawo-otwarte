@@ -1,9 +1,13 @@
 # BASAL w Prawie Otwartym
 
 Prawo Otwarte jest niezależnym, otwartym projektem rozwijanym w oparciu o BASAL.
-Publiczna strona nie wywołuje jeszcze modelu. Istniejący adapter serwerowy
-pozostaje oddzielony od wariantu GitHub Pages; uruchomienie całej integracji
-wymaga testu na rzeczywistym modelu.
+Publiczna strona GitHub Pages łączy się z API przez HTTPS i może wywoływać
+lokalny model do klasyfikacji dziedziny. Przeglądarka nie ma bezpośredniego
+dostępu do serwera modelu. Własna instalacja może działać bez BASAL-a.
+
+Połączenie, certyfikat i rzeczywistą odpowiedź modelu zweryfikowano niezależnie
+2026-10-03: [test publicznego wdrożenia](https://github.com/rdemb/prawo-otwarte/actions/runs/37118309874).
+To potwierdzenie działania technicznego, nie poprawności prawnej.
 
 ## Autorstwo i pochodzenie
 
@@ -34,7 +38,7 @@ jego sprawdzeń: syntetyczne przypadki, definicje kategorii, pomyłki, niepewno�
 metody i poprawki. To zamierzenie rozwoju, nie deklaracja ukończonej ewaluacji.
 Do publicznych testów nie trafiają rzeczywiste sprawy ani dane klientów.
 
-Przed włączeniem modelu dla użytkowników wymagamy:
+Przed rozszerzeniem roli modelu poza badawczą propozycję dziedziny wymagamy:
 
 - zgodności kontraktu API na rzeczywistej instalacji;
 - zmierzonego czasu odpowiedzi i kontrolowanej liczby wywołań;
@@ -50,4 +54,9 @@ Przed włączeniem modelu dla użytkowników wymagamy:
 - [Licencja silnika](https://github.com/rkinas/basal/blob/main/LICENSE)
 
 Informacje o technologii sprawdzono 2026-10-03. Zainstalowany wariant modelu
-i jego rewizja będą opisane po zakończeniu weryfikacji integracji.
+w zweryfikowanej instalacji to `Remek/basal-1.0-1.5B`. Rewizja wag:
+`81a74acc6e7f7604008697b2daa83b3652d85b68`. Zmiana instalacji wymaga ponownych testów.
+
+Laboratorium udostępnia osiem syntetycznych przykładów i pomiary bieżącej karty.
+Etykiety nie przeszły jeszcze niezależnego przeglądu eksperckiego.
+[Definicje wskaźników i zakres danych](MEASUREMENTS.md).

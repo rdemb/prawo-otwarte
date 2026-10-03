@@ -180,7 +180,7 @@ class App:
             return 200, {"status":"ok","version":__version__}, "application/json"
         if method != "GET":
             return 405, {"error":"Metoda niedozwolona."}, "application/json"
-        allowed = {"/":"index.html", "/index.html":"index.html", "/app.js":"app.js", "/style.css":"style.css", "/favicon.svg":"favicon.svg"}
+        allowed = {"/":"index.html", "/index.html":"index.html", "/app.js":"app.js", "/metrics.js":"metrics.js", "/style.css":"style.css", "/favicon.svg":"favicon.svg"}
         if path not in allowed:
             return 404, {"error":"Nie znaleziono strony."}, "application/json"
         target = STATIC / allowed[path]

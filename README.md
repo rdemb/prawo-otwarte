@@ -12,8 +12,8 @@ obejmuje wszystkie dziedziny prawa polskiego, z prawem miejscowym, odpowiednimi
 Projekt rozwijamy w oparciu o **[BASAL](https://basal.si5.pl/)**, otwarty model
 decyzyjny Remigiusza Kinasa zbudowany na modelach **Bielik / SpeakLeash**.
 Chcemy wspierać praktyczne zastosowania polskich modeli poprzez otwarty kod,
-sprawdzalne testy i publikowanie ograniczeń. **Model nie jest jeszcze podłączony
-do publicznej strony.** [Rola BASAL-a, autorstwo i plan integracji](docs/BASAL.md).
+sprawdzalne testy i publikowanie ograniczeń. **Publiczna strona jest połączona
+z lokalnym BASAL-em przez HTTPS.** Status instalacji jest odczytywany nad pracownią. [Rola BASAL-a, autorstwo i plan integracji](docs/BASAL.md).
 
 ## Stan: 0.1 — działający fundament, nie gotowy autonomiczny prawnik
 
@@ -27,7 +27,9 @@ Wersja 0.1 oferuje:
 - kopie źródeł z SHA-256, czasem pobrania i oryginalnym identyfikatorem ELI;
 - jawny stan pokrycia źródeł — początkowo lokalna baza jest pusta;
 - notatkę sprawy, pytania do wyjaśnienia i pobieranie notatki na urządzenie użytkownika;
-- opcjonalne kierowanie sprawy do dziedziny przez **lokalny BASAL**;
+- opcjonalne kierowanie sprawy do dziedziny przez **lokalny BASAL**, z potwierdzeniem użytkownika;
+- laboratorium z 8 jawnymi przykładami, pomiarem czasu odpowiedzi i eksportem JSON;
+- statystyki bieżącej karty oraz lokalną ocenę przydatności propozycji;
 - ograniczenie zapytań, walidację danych i ograniczenie równoległych wywołań BASAL-a.
 
 Nie są jeszcze zaimplementowane: generatywna opinia prawna, rekonstrukcja prawa
@@ -51,6 +53,9 @@ W trybie połączonym opis trafia do serwera projektu; strona wyświetla odpowie
 informację o danych i stan odczytany z aplikacji. Samo włączenie integracji
 nie potwierdza trafności modelu ani kompletności prawa.
 
+Pomiary nie zawierają opisów spraw i nie są wysyłane do analityki.
+[Metoda pomiarów i ograniczenia](docs/MEASUREMENTS.md).
+
 Lista źródeł i notatka pozostają w pamięci karty — odświeżenie je usuwa. Użytkownik
 może pobrać je do pliku. Rok w filtrze jest rokiem publikacji, nie datą obowiązywania.
 
@@ -59,7 +64,7 @@ w [Settings → Pages](https://github.com/rdemb/prawo-otwarte/settings/pages)
 **Build and deployment → Source → GitHub Actions**. Następnie uruchom workflow
 lub ponów nieudane wdrożenie w Actions. Nie potrzeba dodatkowego tokenu ani domeny.
 
-Publikowanych jest tylko siedem plików przygotowanych w `_site/`. Katalog repo,
+Publikowanych jest tylko osiem plików przygotowanych w `_site/`. Katalog repo,
 kod serwera, dokumentacja wdrożenia i dane nie są przesyłane jako strona.
 
 ```bash
