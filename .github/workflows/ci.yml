@@ -16,6 +16,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m unittest discover -s tests -v
+      - run: python -m scripts.check_public_repo
       - run: python -m compileall -q prawo
       - uses: actions/setup-node@v4
         with:

@@ -13,3 +13,13 @@ i różnic wyników. Zmiany w źródłach muszą zachowywać pochodzenie i relac
 
 Wkład w kod jest udostępniany na warunkach Apache-2.0 projektu. Dołączając dane
 lub cudze materiały, opisz oddzielnie ich pochodzenie i warunki wykorzystania.
+
+Pomoc jest potrzebna także poza kodem: dostępność i czytelność interfejsu,
+sprawdzanie źródeł, syntetyczne przypadki testowe i niezależna ocena prawnicza.
+Nie nazywaj wyniku klasyfikacji opinią prawną. Nie przenoś benchmarku modelu
+na deklarowaną skuteczność aplikacji bez osobnego badania.
+
+Przed publikacją uruchom `python -m scripts.check_public_repo`. Nie dodawaj
+plików z instrukcjami agentów, raportów hosta, baz, wag ani prawdziwych spraw.
+Do testów używaj danych syntetycznych. Jedyny workflow publikacji strony to
+`Publish website`; jego artefakt zawiera wyłącznie publiczne zasoby.

@@ -3,11 +3,17 @@
 **Polskie prawo, otwarte źródła i sprawdzalne informacje.**
 
 **Adres strony:** [rdemb.github.io/prawo-otwarte](https://rdemb.github.io/prawo-otwarte/)
-— publikacja przez GitHub Pages; wymaga włączenia Pages dla repozytorium.
+— publiczna pracownia, bez konta i opłat za dostęp.
 
 Publiczny projekt budujący asystenta badania polskiego prawa. Docelowy zakres
 obejmuje wszystkie dziedziny prawa polskiego, z prawem miejscowym, odpowiednimi
 źródłami UE oraz odrębną warstwą orzecznictwa i objaśnień.
+
+Projekt rozwijamy w oparciu o **[BASAL](https://basal.si5.pl/)**, otwarty model
+decyzyjny Remigiusza Kinasa zbudowany na modelach **Bielik / SpeakLeash**.
+Chcemy wspierać praktyczne zastosowania polskich modeli poprzez otwarty kod,
+sprawdzalne testy i publikowanie ograniczeń. **Model nie jest jeszcze podłączony
+do publicznej strony.** [Rola BASAL-a, autorstwo i plan integracji](docs/BASAL.md).
 
 ## Stan: 0.1 — działający fundament, nie gotowy autonomiczny prawnik
 
@@ -15,6 +21,8 @@ Wersja 0.1 oferuje:
 
 - responsywną stronę i działające formularze, bez kont i zewnętrznego śledzenia;
 - wyszukiwanie **tytułów aktów** w oficjalnym ELI/API Sejmu;
+- filtry dziennika i roku publikacji oraz kolejne strony wyników;
+- listę wybranych źródeł z eksportem tytułów, identyfikatorów i oficjalnych linków;
 - lokalny katalog SQLite FTS5: metadane oraz dostępne, jawnie importowane teksty HTML;
 - kopie źródeł z SHA-256, czasem pobrania i oryginalnym identyfikatorem ELI;
 - jawny stan pokrycia źródeł — początkowo lokalna baza jest pusta;
@@ -37,7 +45,10 @@ z przeglądarki oraz notatkę sprawy tworzoną na urządzeniu użytkownika. Nie 
 opisu sprawy do modelu. Lokalna baza i BASAL wymagają osobnego backendu na VPS;
 nie są przedstawiane jako podłączone do wersji Pages.
 
-Workflow `Publish website` buduje stronę po zmianach na `main`. Jednorazowo ustaw
+Lista źródeł i notatka pozostają w pamięci karty — odświeżenie je usuwa. Użytkownik
+może pobrać je do pliku. Rok w filtrze jest rokiem publikacji, nie datą obowiązywania.
+
+Workflow `Publish website` buduje stronę po zmianach na `main`. Dla własnej kopii repo ustaw
 w [Settings → Pages](https://github.com/rdemb/prawo-otwarte/settings/pages)
 **Build and deployment → Source → GitHub Actions**. Następnie uruchom workflow
 lub ponów nieudane wdrożenie w Actions. Nie potrzeba dodatkowego tokenu ani domeny.

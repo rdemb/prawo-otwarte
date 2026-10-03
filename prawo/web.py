@@ -119,9 +119,23 @@ class App:
                     raise ValueError("Nieobsługiwany tryb wyszukiwania.")
                 if not self.settings.allow_eli:
                     raise SourceError("ELI disabled")
-                result = self.eli.search(query, limit=20)
+                publisher = self.string(data,"publisher",0,2)
+                if publisher not in {"", "DU", "MP"}:
+                    raise ValueError("Nieprawidłowy dziennik.")
+                raw_year = data.get("year", "")
+                year = None
+                if raw_year != "":
+                    if isinstance(raw_year,bool) or not isinstance(raw_year,(str,int)) or not str(raw_year).isdigit():
+                        raise ValueError("Nieprawidłowy rok publikacji.")
+                    year = int(raw_year)
+                    if not 1900 <= year <= date.today().year:
+                        raise ValueError("Nieprawidłowy rok publikacji.")
+                offset = data.get("offset",0)
+                if type(offset) is not int or not 0 <= offset <= 1_000_000:
+                    raise ValueError("Nieprawidłowy numer strony.")
+                result = self.eli.search(query,publisher=publisher or None,year=year,offset=offset,limit=20)
                 items = [dict(normalize_act(item),fetched_at=result["fetched_at"]) for item in result["items"]]
-                return 200, {"items":items,"mode":"eli","total":result["total"],"returned":len(items),
+                return 200, {"items":items,"mode":"eli","offset":offset,"total":result["total"],"returned":len(items),
                              "fetched_at":result["fetched_at"],"temporal_verified":False}, "application/json"
             if path == "/api/act" and method == "GET":
                 eli = validate_eli(parse_qs(env.get("QUERY_STRING",""),max_num_fields=5).get("eli",[""])[0])
