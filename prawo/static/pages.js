@@ -19,7 +19,18 @@ window.PrawoPages = {
     if (path === '/api/search') {
       if (body.mode !== 'eli') throw new Error('Lokalna baza nie jest jeszcze podłączona do tej strony.');
       if (typeof body.query !== 'string' || body.query.trim().length < 2 || body.query.length > 160) throw new Error('Wpisz od 2 do 160 znaków.');
-      const params = new URLSearchParams({title:body.query.trim(),limit:'20',sortBy:'promulgation',sortDir:'desc'});
+      const offset = body.offset ?? 0;
+      if (!Number.isInteger(offset) || offset < 0 || offset > 1000000) throw new Error('Nieprawidłowy numer strony.');
+      const params = new URLSearchParams({title:body.query.trim(),limit:'20',offset:String(offset),sortBy:'promulgation',sortDir:'desc'});
+      if (body.publisher) {
+        if (!['DU','MP'].includes(body.publisher)) throw new Error('Nieprawidłowy dziennik.');
+        params.set('publisher',body.publisher);
+      }
+      if (body.year) {
+        const year = Number(body.year);
+        if (!Number.isInteger(year) || year < 1900 || year > new Date().getFullYear()) throw new Error('Nieprawidłowy rok publikacji.');
+        params.set('year',String(year));
+      }
       let result;
       try {
         const response = await fetch('https://api.sejm.gov.pl/eli/acts/search?' + params, {credentials:'omit',signal:AbortSignal.timeout(15000)});
@@ -33,7 +44,7 @@ window.PrawoPages = {
         return {eli:item.ELI,title:item.title,display_address:item.displayAddress || item.ELI,status:item.status || 'brak statusu w źródle',
           source_url:'https://eli.gov.pl/eli/' + item.ELI + '/ogl',fetched_at:stamp,temporal_verified:false};
       });
-      return {mode:'eli',items,returned:items.length,total:result.totalCount,temporal_verified:false};
+      return {mode:'eli',items,offset,returned:items.length,total:result.totalCount,temporal_verified:false};
     }
     if (path === '/api/intake') {
       if (typeof body.description !== 'string' || body.description.trim().length < 20 || body.description.length > 4000) throw new Error('Opis powinien mieć od 20 do 4000 znaków.');

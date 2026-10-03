@@ -3,8 +3,10 @@
 ## Wariant GitHub Pages
 
 Builder `scripts/build_pages.py` wybiera tylko publiczne zasoby strony i dodaje
-`pages.js`. Ten adapter wysyła wyłącznie frazę wyszukiwania do ELI, z pominięciem
-cookies, a notatkę sprawy tworzy w pamięci przeglądarki. Widok jawnie informuje,
+`pages.js`. Do ELI wysyła frazę wyszukiwania, wybrane filtry dziennika i roku
+publikacji oraz offset strony. Żądania nie przesyłają cookies.
+Opis sprawy nie trafia do ELI. Notatkę i listę źródeł tworzy w pamięci przeglądarki.
+Widok jawnie informuje,
 że backend i BASAL nie są podłączone. Dane wywiadu i katalog źródeł pochodzą
 z tych samych definicji co aplikacja Python. Nie jest to symulacja odpowiedzi API.
 
@@ -58,7 +60,7 @@ Oryginalne metadane i relacje nie są zastępowane streszczeniem modelu.
 |---|---|
 | `GET /healthz` | Stan procesu; nie test jakości prawa ani dostępności modelu |
 | `GET /api/status` | Faktyczne liczniki, zakres źródeł, konfiguracja integracji |
-| `POST /api/search` | `{query, mode: eli|local}`; do 20 wyników |
+| `POST /api/search` | `{query, mode: eli|local, publisher?, year?, offset?}`; do 20 wyników; filtry i offset dla ELI |
 | `GET /api/act?eli=DU/1997/483` | Lokalna kopia, metadane i pochodzenie |
 | `POST /api/intake` | `{description,event_date,domain}`; pytania i kierunek szukania |
 

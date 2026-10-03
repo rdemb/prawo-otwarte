@@ -31,8 +31,9 @@ async function request(path, body) {
 function feedback(id, message, error = false) {
   const node = $(id); node.textContent = message; node.classList.toggle('error', error);
 }
+const tabs = ['search', 'intake', 'saved'];
 function setTab(name, focus = false) {
-  for (const key of ['search', 'intake']) {
+  for (const key of tabs) {
     const active = key === name;
     $(`#${key}-tab`).classList.toggle('active', active);
     $(`#${key}-tab`).setAttribute('aria-selected', String(active));
@@ -41,12 +42,13 @@ function setTab(name, focus = false) {
   }
   if (focus) $(`#${name}-tab`).focus();
 }
-for (const name of ['search', 'intake']) {
+for (const name of tabs) {
   $(`#${name}-tab`).addEventListener('click', () => setTab(name));
   $(`#${name}-tab`).addEventListener('keydown', (event) => {
     if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
       event.preventDefault();
-      setTab(event.key === 'Home' ? 'search' : event.key === 'End' ? 'intake' : name === 'search' ? 'intake' : 'search', true);
+      const direction = event.key === 'ArrowLeft' ? -1 : 1;
+      setTab(event.key === 'Home' ? tabs[0] : event.key === 'End' ? tabs.at(-1) : tabs[(tabs.indexOf(name) + direction + tabs.length) % tabs.length], true);
     }
   });
 }
@@ -80,8 +82,8 @@ async function loadStatus() {
       $('#search-tab small').textContent = 'Oficjalne tytuły i publikacje';
       $('#intake-form .micro').textContent = 'Opis i notatka pozostają na Twoim urządzeniu. W tej wersji dziedzinę wybierasz samodzielnie; opis nie trafia do modelu ani na serwer projektu.';
       $('#domain option[value="unknown"]').textContent = 'Wybierz dziedzinę (opcjonalnie)';
-      document.querySelectorAll('.method-list details')[3].querySelector('p').textContent = 'Nie wymagamy konta ani nie zapisujemy opisu sprawy. Notatka powstaje w pamięci przeglądarki. Pobranie jej na urządzenie jest Twoją decyzją.';
-      document.querySelectorAll('.method-list details')[2].querySelector('p').textContent = 'W tej publicznej wersji samodzielnie wybierasz dziedzinę. Integracja modelu na serwerze jest kolejnym etapem. Narzędzie nie rozstrzyga uprawnień, nie oblicza terminów i nie prognozuje wyniku postępowania.';
+      $('#method-privacy-copy').textContent = 'Nie wymagamy konta ani nie zapisujemy opisu sprawy. Notatka powstaje w pamięci przeglądarki. Pobranie jej na urządzenie jest Twoją decyzją.';
+      $('#method-model-copy').textContent = 'Projekt rozwijamy w oparciu o BASAL. W tej publicznej wersji samodzielnie wybierasz dziedzinę; podłączenie modelu jest kolejnym etapem. Narzędzie nie rozstrzyga uprawnień ani nie oblicza terminów.';
     } else {
       $('#metadata-count').textContent = status.corpus.metadata_count.toLocaleString('pl-PL');
       $('#text-count').textContent = status.corpus.text_count.toLocaleString('pl-PL');
@@ -102,6 +104,9 @@ async function loadStatus() {
 }
 function updateSearchPrivacy() {
   const mode = $('input[name="mode"]:checked').value;
+  $('#search-filters').hidden = mode !== 'eli';
+  $('#publisher').disabled = mode !== 'eli';
+  $('#publication-year').disabled = mode !== 'eli';
   $('#search-privacy').textContent = mode === 'eli'
     ? 'Fraza wyszukiwania trafi do API Sejmu. Wpisz temat lub tytuł aktu, bez danych osobowych.'
     : 'Wyszukiwanie obejmuje wyłącznie dokumenty zaimportowane do tej instalacji. Brak wyniku nie oznacza braku odpowiedniego przepisu.';
@@ -110,6 +115,40 @@ document.querySelectorAll('input[name="mode"]').forEach(node => node.addEventLis
 document.querySelectorAll('[data-query]').forEach(button => button.addEventListener('click', () => {
   $('#query').value = button.dataset.query; $('#search-form').requestSubmit();
 }));
+const selectedSources = new Map();
+function downloadText(name, text) {
+  const url = URL.createObjectURL(new Blob([text], {type:'text/plain;charset=utf-8'}));
+  const a = element('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function renderSelectedSources() {
+  $('#saved-count').textContent = String(selectedSources.size);
+  $('#download-sources').disabled = !selectedSources.size;
+  $('#clear-sources').disabled = !selectedSources.size;
+  const list = $('#saved-list'); list.replaceChildren();
+  if (!selectedSources.size) list.append(element('p', 'Jeszcze pusto. Wyszukaj akt i wybierz „Dodaj do źródeł”.', 'notice'));
+  for (const act of selectedSources.values()) {
+    const card = element('article', undefined, 'result-card');
+    const actions = element('div', undefined, 'result-actions');
+    const remove = element('button', 'Usuń z listy'); remove.type = 'button';
+    remove.setAttribute('aria-label', 'Usuń z listy: ' + act.eli);
+    remove.addEventListener('click', () => { selectedSources.delete(act.eli); renderSelectedSources(); feedback('#saved-feedback', 'Usunięto źródło ' + act.eli + '.'); });
+    actions.append(externalLink('Oficjalna publikacja ↗', act.source_url), remove);
+    card.append(element('span', act.eli, 'result-meta'), element('h4', act.title, 'result-title'), actions);
+    list.append(card);
+  }
+  document.querySelectorAll('[data-save-eli]').forEach(button => {
+    const saved = selectedSources.has(button.dataset.saveEli);
+    button.textContent = saved ? 'Na Twojej liście ✓' : 'Dodaj do źródeł +';
+    button.disabled = saved;
+  });
+}
+$('#download-sources').addEventListener('click', () => {
+  const body = [...selectedSources.values()].map((act,index) => `${index+1}. ${act.title}\nELI: ${act.eli}\nStatus podany przez źródło: ${act.status}\nOdczytano: ${act.fetched_at}\nOficjalna publikacja: ${act.source_url}`).join('\n\n');
+  downloadText('prawo-otwarte-zrodla.txt', `PRAWO OTWARTE — LISTA ŹRÓDEŁ\nPrzygotowano: ${new Date().toISOString()}\n\n${body}\n\nLista do dalszej analizy, nie opinia prawna. Należy zweryfikować nowelizacje, przepisy przejściowe i wersję właściwą dla daty sprawy.\n`);
+});
+$('#clear-sources').addEventListener('click', () => { selectedSources.clear(); renderSelectedSources(); feedback('#saved-feedback', 'Lista została wyczyszczona.'); });
+let currentSearch = null;
 function renderResults(data) {
   const results = $('#search-results'); results.replaceChildren();
   $('#search-empty').hidden = true;
@@ -119,6 +158,13 @@ function renderResults(data) {
     meta.append(element('span', act.display_address), element('span', `ELI: ${act.eli}`));
     const actions = element('div', undefined, 'result-actions');
     actions.append(externalLink('Oficjalna publikacja ↗', act.source_url));
+    const save = element('button', 'Dodaj do źródeł +'); save.type = 'button'; save.dataset.saveEli = act.eli;
+    save.addEventListener('click', () => {
+      if (selectedSources.size >= 30) { feedback('#search-feedback', 'Na liście jest już 30 źródeł. Pobierz ją lub usuń wybrane pozycje.', true); return; }
+      selectedSources.set(act.eli, {...act}); renderSelectedSources();
+      feedback('#search-feedback', `Dodano ${act.eli}. Otwórz zakładkę „Twoje źródła”, aby pobrać listę.`);
+    });
+    actions.append(save);
     if (data.mode === 'local') {
       const open = element('button', 'Kopia i pochodzenie →'); open.type = 'button';
       open.addEventListener('click', () => showAct(act.eli)); actions.append(open);
@@ -128,15 +174,30 @@ function renderResults(data) {
     results.append(card);
   }
   if (!data.items.length) results.append(element('p', 'Brak wyników w tym zakresie. Spróbuj krótszego tytułu lub innego źródła. To nie oznacza braku przepisów dotyczących sprawy.', 'notice'));
-  feedback('#search-feedback', data.mode === 'eli' ? `ELI: pokazano ${data.returned} z ${data.total} wyników. Wyszukiwanie po tytułach.` : `Lokalny katalog: ${data.returned} wyników (maksymalnie 20).`);
+  renderSelectedSources();
+  const offset = data.offset || 0;
+  $('#search-pagination').hidden = data.mode !== 'eli' || !data.total;
+  $('#previous-page').disabled = offset === 0;
+  $('#next-page').disabled = !data.returned || offset + data.returned >= data.total;
+  $('#page-position').textContent = `${data.returned ? offset + 1 : 0}–${offset + data.returned} z ${data.total || 0}`;
+  feedback('#search-feedback', data.mode === 'eli' ? `ELI: ${data.returned ? offset + 1 : 0}–${offset + data.returned} z ${data.total} wyników. Rok oznacza publikację, nie okres obowiązywania.` : `Lokalny katalog: ${data.returned} wyników (maksymalnie 20).`);
 }
-$('#search-form').addEventListener('submit', async event => {
-  event.preventDefault();
-  const button = $('#search-form button[type="submit"]'); button.disabled = true;
-  feedback('#search-feedback', 'Szukamy w wybranym źródle…'); $('#search-results').replaceChildren();
-  try { renderResults(await request('/api/search', {query: $('#query').value.trim(), mode: $('input[name="mode"]:checked').value})); }
+async function performSearch(criteria) {
+  const button = $('#search-form button[type="submit"]');
+  if (button.disabled) return;
+  button.disabled = true;
+  $('#search-results').setAttribute('aria-busy','true'); $('#search-pagination').hidden = true;
+  feedback('#search-feedback', 'Szukamy w wybranym źródle…'); $('#search-results').replaceChildren(); $('#search-empty').hidden = true;
+  try { const data = await request('/api/search', criteria); currentSearch = {...criteria}; renderResults(data); }
   catch (error) { feedback('#search-feedback', error.message, true); }
-  finally { button.disabled = false; }
+  finally { button.disabled = false; $('#search-results').setAttribute('aria-busy','false'); }
+}
+$('#search-form').addEventListener('submit', event => {
+  event.preventDefault();
+  performSearch({query:$('#query').value.trim(),mode:$('input[name="mode"]:checked').value,publisher:$('#publisher').value,year:$('#publication-year').value,offset:0});
+});
+for (const [id,delta] of [['previous-page',-20],['next-page',20]]) $( '#' + id).addEventListener('click', () => {
+  if (currentSearch) performSearch({...currentSearch,offset:Math.max(0,currentSearch.offset+delta)});
 });
 async function showAct(eli) {
   const dialog = $('#act-dialog');
@@ -177,12 +238,17 @@ $('#intake-form').addEventListener('submit', async event => {
     const download = element('button', 'Pobierz notatkę ↓', 'button outline'); download.type = 'button';
     download.addEventListener('click', () => {
       const text = `PRAWO OTWARTE — NOTATKA SPRAWY\nTo notatka przygotowawcza, nie opinia prawna.\n\nOpis użytkownika:\n${description}\n\nData zdarzenia: ${data.event_date || 'nie podano'}\nDziedzina: ${data.domain_label}\nSposób ustalenia: ${data.routing.reason}\n\nPytania do wyjaśnienia:\n${data.questions.map((q,i) => `${i+1}. ${q}`).join('\n')}\n\nSugerowana fraza do wyszukiwania: ${data.suggested_query || 'do ustalenia'}\n\n${data.note}\n`;
-      const url = URL.createObjectURL(new Blob([text], {type:'text/plain;charset=utf-8'}));
-      const a = element('a'); a.href = url; a.download = 'prawo-otwarte-notatka.txt'; document.body.append(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      downloadText('prawo-otwarte-notatka.txt',text);
     });
     card.append(download); $('#intake-results').append(card); feedback('#intake-feedback', 'Notatka gotowa. Treść nie została zapisana w bazie aplikacji.');
   } catch (error) { feedback('#intake-feedback', error.message, true); }
   finally { button.disabled = false; }
 });
-loadStatus();
+$('#publication-year').max = String(new Date().getFullYear());
+const statusReady = loadStatus();
+document.querySelectorAll('[data-domain]').forEach(button => button.addEventListener('click', async () => {
+  await statusReady;
+  setTab('intake'); $('#domain').value = button.dataset.domain;
+  $('#pracownia').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
+  $('#description').focus({preventScroll:true});
+}));

@@ -74,6 +74,24 @@ class WebTests(unittest.TestCase):
         codes = [self.call('/api/status')[0] for _ in range(31)]
         self.assertEqual(codes[-1],429)
 
+    def test_search_filters_and_pagination_reach_official_client(self):
+        self.app.settings = replace(self.settings,allow_eli=True)
+        calls = []
+        def search(query,**filters):
+            calls.append((query,filters))
+            return {'items':[], 'total':100,'fetched_at':'2026-10-03T00:00:00Z'}
+        self.app.eli.search = search
+        code,_,data = self.call('/api/search',{'query':'Kodeks','mode':'eli','publisher':'DU','year':'2025','offset':20})
+        self.assertEqual(code,200); self.assertEqual(data['offset'],20)
+        self.assertEqual(calls,[('Kodeks',{'publisher':'DU','year':2025,'offset':20,'limit':20})])
+        self.assertFalse(data['temporal_verified'])
+
+    def test_invalid_source_filters_never_reach_official_client(self):
+        self.app.settings = replace(self.settings,allow_eli=True)
+        self.app.eli.search = lambda *a,**k:self.fail('Invalid filter reached source')
+        for values in [{'publisher':'XX'},{'year':True},{'year':[]},{'year':'9999'},{'offset':-1},{'offset':True}]:
+            self.assertEqual(self.call('/api/search',{'query':'Kodeks','mode':'eli',**values})[0],400)
+
 
 class BasalTests(unittest.TestCase):
     def router(self, raw):
