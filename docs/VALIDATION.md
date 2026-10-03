@@ -105,3 +105,12 @@ Nie włączono publicznego połączenia bez potwierdzonego adresu API. Nie wykon
 tutaj testu VPS ani jego rzeczywistego modelu; wynik lokalnego CORS nie zastępuje
 testu całej ścieżki przez produkcyjny reverse proxy. Raporty z serwera pozostają
 poza publicznym repozytorium.
+
+## Opcjonalny adres IP dla API — 2026-10-03
+
+41 testów offline — PASS. Dodano test budowania konfiguracji z publicznym IPv4
+i IPv6 oraz odrzucania adresów niepublicznych, multicast, zarezerwowanych,
+niejednoznacznych reprezentacji i identyfikatorów interfejsu. Adresy testowe służą
+wyłącznie do parsowania; testy nie nawiązują z nimi połączenia. Domyślny tryb
+samodzielny Pages pozostaje bez zmian. Nie wystawiono tu certyfikatu dla VPS ani
+nie potwierdzono jego publicznego HTTPS; są to czynności wdrożeniowe operatora.

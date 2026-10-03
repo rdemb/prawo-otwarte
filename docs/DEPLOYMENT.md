@@ -81,7 +81,8 @@ Kolejność podłączenia:
 
 1. Wdróż aktualne `main` na VPS z zachowaniem własnego środowiska, danych i
    ustawień BASAL-a. Wykonaj kopię oraz testy przed restartem aplikacji.
-2. Skonfiguruj posiadaną domenę, DNS i reverse proxy HTTPS do `127.0.0.1:8080`.
+2. Skonfiguruj reverse proxy HTTPS do `127.0.0.1:8080`: z posiadaną domeną i DNS
+   albo publicznym adresem IP oraz zaufanym certyfikatem opisanym poniżej.
    Potwierdź prawidłowy certyfikat i `/api/status` z maszyny poza VPS.
 3. W prywatnym pliku środowiska VPS ustaw
    `PRAWO_ALLOWED_ORIGINS=https://rdemb.github.io` i zrestartuj aplikację.
@@ -118,10 +119,48 @@ Bez tej opcji i zmiennej środowiskowej `PRAWO_API_BASE_URL` pozostaje tryb
 samodzielny. Katalog wyjściowy musi być pusty; publikuje się wyłącznie siedem
 dozwolonych zasobów, nigdy repozytorium w całości.
 
-`deploy/Caddyfile.example` jest szablonem. Zastąp `prawo.example.org` posiadaną
+`deploy/Caddyfile.example` jest szablonem wariantu z domeną. Zastąp `prawo.example.org` posiadaną
 domeną, sprawdź DNS, istniejący reverse proxy i konflikt portów 80/443. Nie używaj
 przykładowej domeny jako rzeczywistej konfiguracji. Potwierdź HTTPS i trasowanie
-z zewnętrznej maszyny. Bez domeny pozostaw działający podgląd lokalny/Tailscale.
+z zewnętrznej maszyny. Brak domeny nie wymusza rezygnacji z publicznego HTTPS;
+alternatywą jest certyfikat publicznego IP, nie certyfikat samopodpisany.
+
+### HTTPS bez własnej domeny
+
+Od stycznia 2026 Let’s Encrypt wydaje publicznie zaufane certyfikaty adresów IP.
+Mają ważność 160 godzin, więc wymagają sprawdzonego automatycznego odnawiania.
+Builder przyjmuje także `https://PUBLICZNY_IP` (IPv6 w nawiasach kwadratowych),
+na porcie 443. Odrzuca m.in. loopback, sieci prywatne, link-local, CGNAT,
+multicast, adresy zarezerwowane i niejednoznaczne skróty IPv4. Walidacja adresu
+nie potwierdza własności hosta, dostępności ani poprawności jego certyfikatu.
+
+Operator musi potwierdzić, że adres nadal jest przypisany do jego VPS.
+Nie wpisuj adresów z testów jako docelowego serwera. Zmiana IP wymaga nowego
+certyfikatu i ponownej publikacji Pages z aktualnym adresem.
+
+Przykładowa ścieżka wdrożenia to Certbot w trybie `certonly --webroot`
+(obsługa IP w webroot wymaga wersji co najmniej 5.4), profil `shortlived`
+i parametr `--ip-address`. Publiczny port 80 serwuje wyłącznie katalog
+`/.well-known/acme-challenge/` oraz przekierowanie do HTTPS; nie udostępnia API
+po HTTP. Najpierw sprawdź ACME staging, potem uzyskaj certyfikat produkcyjny.
+Nginx lub Caddy musi jawnie wczytywać uzyskaną parę certyfikat/klucz.
+Nie zakładaj, że domyślna konfiguracja Caddy dla IP uzyska zaufany certyfikat.
+
+Zweryfikuj timer odnowienia, test `certbot renew --dry-run` i deploy hook,
+który po odnowieniu waliduje konfigurację i przeładowuje proxy. Przy Caddy
+potrzebne jest ponowne wczytanie certyfikatu również wtedy, gdy tekst konfiguracji
+się nie zmienił. Klucz pozostaje prywatny. Monitoruj datę certyfikatu faktycznie
+serwowanego klientom. Poświadczenia, klucze i lokalne adresy administracyjne
+nie trafiają do repozytorium.
+
+Po uzyskaniu produkcyjnego TLS ustaw `PRAWO_API_BASE_URL` na origin HTTPS tego IP.
+`PRAWO_ALLOWED_ORIGINS=https://rdemb.github.io` pozostaje bez zmian. Przed
+aktywacją sprawdź całą ścieżkę z publicznej strony, bez pomijania kontroli TLS.
+
+Źródła: [dostępność i czas ważności certyfikatów IP](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability),
+[Certbot i certyfikaty IP](https://letsencrypt.org/2026/03/11/shorter-certs-certbot),
+[odnawianie Certbot](https://eff-certbot.readthedocs.io/en/stable/using.html#renewing-certificates),
+[własne certyfikaty w Caddy](https://caddyserver.com/docs/caddyfile/directives/tls).
 
 Nie wystawiaj portu modelu ani plików danych do internetu. Nie włączaj access logów
 z pełną treścią żądań ani tracingu zbierającego opis sprawy. Konfigurację logów
