@@ -44,6 +44,7 @@ Wersja statyczna zachowuje wygląd aplikacji i oferuje wyszukiwanie w ELI bezpo�
 z przeglądarki oraz notatkę sprawy tworzoną na urządzeniu użytkownika. Nie przesyła
 opisu sprawy do modelu. Jest to domyślny tryb, gdy nie ustawiono adresu API.
 Lokalną bazę i BASAL można podłączyć do Pages przez backend HTTPS na VPS.
+Może używać własnej domeny albo publicznego IP z zaufanym, odnawianym certyfikatem.
 Instrukcja konfiguracji, testów i wycofania połączenia:
 [Dostęp publiczny](docs/DEPLOYMENT.md#5-dostęp-publiczny).
 W trybie połączonym opis trafia do serwera projektu; strona wyświetla odpowiednią

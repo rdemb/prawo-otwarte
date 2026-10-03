@@ -1,21 +1,31 @@
 import os
 import re
+import ipaddress
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
 
 def public_https_origin(value):
-    """Deployment configuration only: one HTTPS DNS origin, without a path or secrets."""
+    """One configured HTTPS origin: DNS name or globally routable IP address."""
     parsed = urlsplit(value)
     host = parsed.hostname or ""
     if (parsed.scheme != "https" or parsed.username is not None or parsed.password is not None
             or parsed.port not in (None, 443) or parsed.path not in ("", "/")
-            or parsed.query or parsed.fragment or not re.fullmatch(
-                r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", host)
-            or host.endswith((".localhost", ".local", ".internal"))
+            or parsed.query or parsed.fragment
             or any(character.isspace() for character in value)):
-        raise ValueError("Expected a public HTTPS DNS origin without a path, credentials or custom port.")
+        raise ValueError("Expected a public HTTPS origin without a path, credentials or custom port.")
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        if (not re.fullmatch(r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", host)
+                or host.endswith((".localhost", ".local", ".internal"))):
+            raise ValueError("Expected a DNS name or globally routable IP address.")
+    else:
+        if (not address.is_global or address.is_multicast or address.is_reserved
+                or getattr(address, "ipv4_mapped", None) or "%" in host):
+            raise ValueError("Only globally routable IP addresses are allowed.")
+        host = f"[{address.compressed}]" if address.version == 6 else str(address)
     return "https://" + host
 
 
