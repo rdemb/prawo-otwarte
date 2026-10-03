@@ -92,6 +92,21 @@ Gunicorn nie zastępuje reverse proxy. Limity zapytań i zasobów w szablonie s�
 ustawieniami pilota, nie gwarancją obsługi określonej liczby osób. Sprawdź timeouty,
 koszt najdłuższego opisu, wzrost bazy, kolejkę i zachowanie przy restarcie modelu.
 
+### Budżet czasu klasyfikacji na CPU
+
+`PRAWO_BASAL_TIMEOUT` pozostaje domyślnie równy 8 sekund; po pomiarze lokalnego
+modelu można ustawić dodatnią wartość do 30 sekund. Przeglądarka czeka na wywiad
+do 40 sekund, pozostałe żądania do 25 sekund. Szablon Gunicorn ma timeout oraz
+graceful timeout 60 sekund. Timeout Gunicorna nadzoruje worker i nie zastępuje
+limitu wywołania modelu. Użytkownik widzi informację o oczekiwaniu i zachowuje
+możliwość samodzielnego wyboru dziedziny przy błędzie klasyfikacji.
+
+Serwer BASAL musi osobno ograniczać długość wejścia i liczbę przyjętych żądań.
+Po rozłączeniu klienta nie wolno zwalniać jego miejsca przed zakończeniem
+rzeczywistej inferencji. Kolejne żądanie powinno szybko otrzymać informację
+o zajętości zamiast trafiać do nieograniczonej kolejki. Semafor aplikacji sam
+nie zapewnia tej własności procesu modelu. Sprawdź ją na rzeczywistym runtime.
+
 ## 6. Aktualizacja i rollback
 
 Zapisz obecny SHA, wykonaj backup, pobierz zatwierdzony commit fast-forward,

@@ -34,6 +34,8 @@ class BasalRouter:
             raise ValueError("BASAL musi być lokalną usługą HTTP pod adresem loopback IP.")
         if not 0 <= settings.basal_threshold <= 1:
             raise ValueError("Nieprawidłowy próg routingu.")
+        if not math.isfinite(settings.basal_timeout) or not 0 < settings.basal_timeout <= 30:
+            raise ValueError("Timeout BASAL-a musi być dodatni i nie większy niż 30 sekund.")
 
     def classify(self, description):
         if not self.settings.basal_enabled:

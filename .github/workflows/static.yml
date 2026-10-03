@@ -18,7 +18,7 @@ permissions:
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: "pages"
+  group: "github-pages"
   cancel-in-progress: false
 
 jobs:
@@ -33,11 +33,18 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate application
+        run: python -m unittest discover -s tests -v
+      - name: Build public website
+        run: python -m scripts.build_pages --output _site
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          # Publish only the allowlisted static assets.
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
