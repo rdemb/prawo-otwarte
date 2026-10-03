@@ -66,6 +66,11 @@ def main(argv=None):
     serve = commands.add_parser("serve",help="Local development server, never internet-facing")
     serve.add_argument("--port",type=int,default=8080)
     commands.add_parser("status")
+    commands.add_parser("catalog-plan", help="Discover all official DU/MP years; metadata scope only")
+    catalog = commands.add_parser("sync-catalog", help="Bounded, resumable first-pass metadata import across all DU/MP years")
+    catalog.add_argument("--publisher", choices=["DU", "MP"])
+    catalog.add_argument("--max-pages", type=int, default=10)
+    catalog.add_argument("--pause", type=float, default=1.0)
     bootstrap = commands.add_parser("bootstrap",help="Import four identified acts as source examples, not all law")
     bootstrap.add_argument("--texts",action="store_true")
     core = commands.add_parser("import-core",help="Refresh 15 core acts and latest linked consolidated publications; PDF extraction requires pdftotext")
@@ -96,7 +101,13 @@ def main(argv=None):
         parser.error("Official source access is disabled by PRAWO_ALLOW_ELI.")
     client = EliClient(settings.official_timeout)
     try:
-        if args.command == "import-core":
+        if args.command == "catalog-plan":
+            print(json.dumps(client.publishers(),ensure_ascii=False,indent=2))
+        elif args.command == "sync-catalog":
+            from .catalog import sync_catalog
+            for result in sync_catalog(store,client,publisher=args.publisher,max_pages=args.max_pages,pause=args.pause):
+                print(json.dumps(result,ensure_ascii=False),flush=True)
+        elif args.command == "import-core":
             if not 0.25 <= args.pause <= 60:
                 parser.error("pause: 0.25..60")
             failures = []

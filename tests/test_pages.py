@@ -5,7 +5,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from scripts.build_pages import build, PUBLIC_FILES
+from scripts.build_pages import build, PUBLIC_FILES, PUBLIC_BINARY_FILES
 
 
 class PagesBuildTests(unittest.TestCase):
@@ -14,10 +14,10 @@ class PagesBuildTests(unittest.TestCase):
             build(folder)
             target = Path(folder)
             names = {p.name for p in target.iterdir()}
-            self.assertEqual(len(names), len(PUBLIC_FILES) + 3)
+            self.assertEqual(len(names), len(PUBLIC_FILES) + len(PUBLIC_BINARY_FILES) + 3)
             self.assertTrue({'index.html', 'pages-data.json', '.nojekyll'} <= names)
             for name in names - {'index.html','pages-data.json','.nojekyll'}:
-                self.assertRegex(name, r'^(style|app|metrics|favicon|pages|boot|pages-data)\.[a-f0-9]{16}\.(css|js|svg|json)$')
+                self.assertRegex(name, r'^(style|app|metrics|favicon|pages|boot|pages-data|onest-latin)\.[a-f0-9]{16}\.(css|js|svg|json|ttf)$')
                 self.assertIn(hashlib.sha256((target / name).read_bytes()).hexdigest()[:16],name)
             html = (target / "index.html").read_text()
             self.assertNotIn('src="/',html)
@@ -29,6 +29,9 @@ class PagesBuildTests(unittest.TestCase):
             self.assertNotIn('./app.js"', html)
             pages_script = (target / next(name for name in scripts if name.startswith('pages.'))).read_text()
             self.assertNotIn("'./pages-data.json'",pages_script)
+            css = (target / next(name for name in names if name.startswith('style.'))).read_text()
+            font = next(name for name in names if name.startswith('onest-latin.'))
+            self.assertIn(font, css)
 
     def test_api_configuration_is_versioned_and_build_is_reproducible(self):
         with tempfile.TemporaryDirectory() as first,tempfile.TemporaryDirectory() as second,tempfile.TemporaryDirectory() as other:

@@ -8,7 +8,7 @@ const {execFileSync} = require('node:child_process');
 const {chromium} = require('playwright');
 let browser, server, origin, root, release, connected, config;
 let prime = false, blocked = '', requests = [];
-const types = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml'};
+const types = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.ttf':'font/ttf'};
 before(async () => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'prawo-browser-'));
   release = path.join(root, 'static'); connected = path.join(root, 'connected');
@@ -35,6 +35,11 @@ before(async () => {
 after(async () => { if (browser) await browser.close(); if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); } if (root) fs.rmSync(root,{recursive:true,force:true}); });
 const waitForText = (page, selector, text) => page.waitForFunction(({selector,text}) => document.querySelector(selector)?.textContent.includes(text), {selector,text});
 const ready = page => page.waitForFunction(() => document.documentElement.dataset.appReady === 'true');
+async function screenshot(page, name) {
+  if (!process.env.PRAWO_TEST_SCREENSHOT_DIR) return;
+  fs.mkdirSync(process.env.PRAWO_TEST_SCREENSHOT_DIR, {recursive:true});
+  await page.screenshot({path:path.join(process.env.PRAWO_TEST_SCREENSHOT_DIR,name+'.png'),fullPage:true});
+}
 
 test('returning visitor loads a complete release despite cached unversioned scripts and CSS', async () => {
   const page = await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
@@ -57,8 +62,13 @@ test('returning visitor loads a complete release despite cached unversioned scri
     for (const width of [320,390,768,1440]) {
       await page.setViewportSize({width,height:900});
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false,`Overflow at ${width}`);
+      if (width===390 || width===1440) await screenshot(page,'home-'+width);
     }
     await page.locator('#open-example').click();
+    assert.equal(await page.locator('#answer-tab').getAttribute('aria-selected'),'true');
+    assert.ok((await page.locator('#answer-question').inputValue()).includes('Kodeks pracy'));
+    await page.locator('#intake-tab').click();
+    await page.locator('#description').fill('Syntetyczny opis zatrudnienia do przygotowania notatki.');
     await page.locator('#domain').selectOption('work');
     await page.locator('#intake-form button[type=submit]').click(); await waitForText(page,'#intake-feedback','Notatka gotowa');
     assert.equal(await page.locator('#metric-completed').textContent(),'0 / 0');
@@ -129,13 +139,21 @@ test('answers show evidence, remain compatible with older API and export only an
   });
   try {
     await page.goto(origin+'/connected/');await ready(page);await waitForText(page,'#service-label','Połączono');
+    assert.equal(await page.locator('#answer-tab').getAttribute('aria-selected'),'true');
+    await page.locator('#answer-tab').focus();await page.keyboard.press('ArrowRight');
+    assert.equal(await page.locator('#search-tab').getAttribute('aria-selected'),'true');
     await page.locator('#answer-tab').click();assert.equal(await page.locator('#answer-submit').isDisabled(),true);
     enabled=true;await page.locator('#refresh-status').click();await waitForText(page,'#answer-capability','generowanie');
     const secret='SYNTHETIC_PRIVATE_ANSWER_874: konkretne pytanie o przepis';
-    await page.locator('#answer-question').fill(secret);await page.locator('#answer-submit').click();await waitForText(page,'#answer-feedback','Gotowe');
+    await page.locator('#answer-question').fill(secret);await page.locator('#open-example').click();
+    assert.equal(await page.locator('#answer-question').inputValue(),secret);assert.equal(answerCalls,0);
+    await page.locator('#answer-submit').click();await waitForText(page,'#answer-feedback','Gotowe');
     assert.equal(answerCalls,1);assert.equal(await page.locator('.answer-claim').count(),1);
     assert.equal(await page.evaluate(()=>window.UNSAFE),undefined);
     assert.equal(await page.locator('#evidence-S1').count(),1);
+    assert.equal(await page.locator('#evidence-S1').getAttribute('open'),'');
+    assert.equal(await page.locator('#answer-wait').isHidden(),true);
+    await page.setViewportSize({width:390,height:844});await screenshot(page,'answer-mobile');
     for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Answer overflow '+width);}
     if(process.env.PRAWO_TEST_SCREENSHOT) {await page.setViewportSize({width:390,height:844});await page.locator('#answer-panel').screenshot({path:process.env.PRAWO_TEST_SCREENSHOT});}
     const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#download-answer-metrics').click()]);
