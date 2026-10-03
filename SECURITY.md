@@ -12,8 +12,10 @@ pamięci czy narzędziach diagnostycznych. Operator musi sprawdzić cały przep�
 
 Katalog i kopie źródeł nie powinny być serwowane jako katalog statyczny.
 Model dostępny tylko lokalnie; strona ma dostęp wyłącznie do API aplikacji.
-Wariant GitHub Pages wyszukuje bezpośrednio w publicznym ELI; opis sprawy i lista
-wybranych źródeł pozostają w pamięci karty przeglądarki. Odświeżenie je usuwa.
+Wariant GitHub Pages bez API wyszukuje bezpośrednio w publicznym ELI; opis sprawy
+pozostaje w przeglądarce. W połączonej instalacji opis trafia do serwera projektu
+i opcjonalnie lokalnego BASAL-a. Aplikacja nie zapisuje opisu w bazie. Lista źródeł,
+notatka i pomiary pozostają w pamięci karty przeglądarki. Odświeżenie je usuwa.
 Eksport do pliku odbywa się na żądanie użytkownika. Nie używamy localStorage,
 zewnętrznego śledzenia ani formularza przesyłania dokumentów. GitHub Pages
 i API Sejmu obsługują żądania sieciowe według własnych zasad; brak własnej
@@ -29,6 +31,7 @@ odrzuca wybrane kategorie plików prywatnych i charakterystyczne formaty kluczy.
 Wyświetla wyłącznie ścieżkę i nazwę reguły, nigdy wartość sekretu. To dodatkowa
 ochrona, nie pełny audyt ani gwarancja wykrycia dowolnych danych poufnych.
 
-Workflow Pages publikuje wyłącznie wynik `scripts.build_pages`: siedem zasobów
-strony. Nie dodawaj równoległego workflow publikującego `path: '.'`.
+Workflow Pages publikuje wyłącznie wynik `scripts.build_pages`: jawnie dozwolone
+zasoby strony. Nazwy stylów, skryptów i konfiguracji zawierają skrót ich zawartości;
+nowy HTML nie odwołuje się do starych, zapamiętanych plików. Nie dodawaj równoległego workflow publikującego `path: '.'`.
 Instrukcje agentów i raporty VPS przechowuj poza publicznym repozytorium.

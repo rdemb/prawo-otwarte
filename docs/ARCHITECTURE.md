@@ -6,12 +6,16 @@ Builder `scripts/build_pages.py` wybiera tylko publiczne zasoby strony i dodaje
 `pages.js`. Do ELI wysyła frazę wyszukiwania, wybrane filtry dziennika i roku
 publikacji oraz offset strony. Żądania nie przesyłają cookies.
 Opis sprawy nie trafia do ELI. Notatkę i listę źródeł tworzy w pamięci przeglądarki.
-Widok jawnie informuje,
-że backend i BASAL nie są podłączone. Dane wywiadu i katalog źródeł pochodzą
+Jest to tryb domyślny bez adresu API. Po skonfigurowaniu API HTTPS żądania
+wyszukiwania i opisy formularza trafiają do backendu, który może korzystać
+z lokalnego BASAL-a. Widok odczytuje i pokazuje rzeczywisty tryb instalacji. Dane wywiadu i katalog źródeł pochodzą
 z tych samych definicji co aplikacja Python. Nie jest to symulacja odpowiedzi API.
 
 Kod aplikacji serwerowej nie ładuje `pages.js`: korzysta z własnego WSGI API.
 Strona używa względnych ścieżek do zasobów, również w podkatalogu repozytorium.
+Builder dodaje skróty zawartości do nazw CSS, JS i konfiguracji. Skrypt startowy
+wykrywa niekompletne pobranie i proponuje ponowne pobranie bez automatycznego
+usuwania pracy użytkownika. Aktualizacja z rozgrzanym cache jest testowana w CI.
 
 ## Granice komponentów
 
