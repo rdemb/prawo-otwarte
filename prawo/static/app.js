@@ -89,6 +89,14 @@ async function loadStatus() {
       $('#text-count').textContent = status.corpus.text_count.toLocaleString('pl-PL');
       $('#import-date').textContent = dateText(status.corpus.last_import);
       $('#connection-status').textContent = 'Dane pochodzą z działającej aplikacji. Pokrycie prawa i poprawność historycznych wersji nie są jeszcze potwierdzone.';
+      const modelEnabled = status.basal.enabled;
+      $('#model-connection-state').textContent = modelEnabled ? 'KLASYFIKACJA WŁĄCZONA' : 'KLASYFIKACJA WYŁĄCZONA';
+      const modelNote = modelEnabled
+        ? 'Ta instalacja ma włączony lokalny BASAL do proponowania dziedziny. Przy awarii lub niejednoznacznym wyniku możesz wybrać dziedzinę samodzielnie. Klasyfikacja nie jest opinią prawną.'
+        : 'Klasyfikacja przez model jest wyłączona w tej instalacji. Wybierz dziedzinę samodzielnie; wyszukiwanie i notatka pozostają dostępne.';
+      $('#model-connection-note').textContent = modelNote;
+      $('#faq-model-copy').textContent = modelNote;
+      $('#faq-privacy-copy').textContent = 'Opis obsługuje serwer tej instalacji; przy automatycznym wyborze dziedziny i włączonym BASAL-u także jego lokalny model. Aplikacja nie zapisuje opisu w bazie. Do API Sejmu trafia wyłącznie fraza wyszukiwania i wybrane filtry.';
     }
     renderSources(status.sources);
     for (const [key, label] of Object.entries(status.domains)) {
