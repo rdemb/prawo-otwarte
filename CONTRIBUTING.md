@@ -23,3 +23,19 @@ Przed publikacją uruchom `python -m scripts.check_public_repo`. Nie dodawaj
 plików z instrukcjami agentów, raportów hosta, baz, wag ani prawdziwych spraw.
 Do testów używaj danych syntetycznych. Jedyny workflow publikacji strony to
 `Publish website`; jego artefakt zawiera wyłącznie publiczne zasoby.
+
+## Testy strony przed publikacją
+
+```sh
+python3 -m unittest discover -s tests -v
+npm ci --ignore-scripts
+npx playwright install chromium
+npm test
+npm run test:browser
+```
+
+Testy przeglądarkowe używają lokalnego serwera, syntetycznych odpowiedzi API
+i rzeczywistej pamięci podręcznej przeglądarki. Nie obciążają publicznego VPS
+ani modelu. Obejmują powracającego użytkownika, brak pliku aplikacji/CSS,
+odzyskanie połączenia, laboratorium, eksport bez opisu sprawy i widoki mobilne.
+Workflow publikacji musi przejść te same testy przed wysłaniem strony.

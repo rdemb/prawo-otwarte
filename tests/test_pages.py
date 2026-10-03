@@ -1,6 +1,8 @@
 import tempfile
 import json
 import unittest
+import hashlib
+import re
 from pathlib import Path
 
 from scripts.build_pages import build, PUBLIC_FILES
@@ -11,11 +13,32 @@ class PagesBuildTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             build(folder)
             target = Path(folder)
-            self.assertEqual({p.name for p in target.iterdir()},set(PUBLIC_FILES)|{"pages-data.json",".nojekyll"})
+            names = {p.name for p in target.iterdir()}
+            self.assertEqual(len(names), len(PUBLIC_FILES) + 3)
+            self.assertTrue({'index.html', 'pages-data.json', '.nojekyll'} <= names)
+            for name in names - {'index.html','pages-data.json','.nojekyll'}:
+                self.assertRegex(name, r'^(style|app|metrics|favicon|pages|boot|pages-data)\.[a-f0-9]{16}\.(css|js|svg|json)$')
+                self.assertIn(hashlib.sha256((target / name).read_bytes()).hexdigest()[:16],name)
             html = (target / "index.html").read_text()
             self.assertNotIn('src="/',html)
             self.assertNotIn('href="/',html)
-            self.assertLess(html.index('src="./pages.js"'),html.index('src="./app.js"'))
+            scripts = re.findall(r'src="./([^"]+)"', html)
+            self.assertEqual([name.split('.')[0] for name in scripts],['boot','metrics','pages','app'])
+            self.assertTrue(all(name in names for name in scripts))
+            self.assertNotIn('./style.css"', html)
+            self.assertNotIn('./app.js"', html)
+            pages_script = (target / next(name for name in scripts if name.startswith('pages.'))).read_text()
+            self.assertNotIn("'./pages-data.json'",pages_script)
+
+    def test_api_configuration_is_versioned_and_build_is_reproducible(self):
+        with tempfile.TemporaryDirectory() as first,tempfile.TemporaryDirectory() as second,tempfile.TemporaryDirectory() as other:
+            build(first,'https://api.example.org'); build(second,'https://api.example.org'); build(other,'https://other.example.org')
+            files = lambda folder:{p.name:p.read_bytes() for p in Path(folder).iterdir()}
+            self.assertEqual(files(first),files(second))
+            self.assertNotEqual((Path(first)/'index.html').read_text(),(Path(other)/'index.html').read_text())
+            self.assertNotEqual(next(Path(first).glob('pages-data.*.json')).name,next(Path(other).glob('pages-data.*.json')).name)
+            config=json.loads((Path(first)/'pages-data.json').read_text())
+            self.assertIn(config['build'],(Path(first)/'index.html').read_text())
 
     def test_build_rejects_directory_with_unrelated_content(self):
         with tempfile.TemporaryDirectory() as folder:

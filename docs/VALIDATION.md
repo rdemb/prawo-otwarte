@@ -1,4 +1,26 @@
-# Sprawdzenia wersji 0.1
+# Sprawdzenia projektu
+
+Poniżej zapisano kolejne etapy testów. Ograniczenia wcześniejszych etapów
+nie opisują automatycznie aktualnego wdrożenia. Bieżące wyniki CI są w GitHub Actions.
+
+## Publiczne wdrożenie i laboratorium — 2026-10-03
+
+- Publiczna strona jest połączona przez HTTPS z API i BASAL-em.
+- Niezależny test TLS, CORS i modelu: [uruchomienie 37118309874](https://github.com/rdemb/prawo-otwarte/actions/runs/37118309874), PASS.
+- PR #8: 41 testów Python, 6 testów agregacji i ręczne scenariusze przeglądarkowe, PASS.
+- Rzeczywisty model w próbie laboratorium: 4,93 s, brak jednoznacznej klasyfikacji.
+  Nie jest to pomiar trafności ani dowód poprawności prawnej.
+- Zgłoszony następnie błąd na telefonie odtworzono: nowy HTML razem ze starym
+  CSS/JS z cache dawał nieostylowane laboratorium i zero przykładów. Poprzednie
+  sprawdzenie w czystej przeglądarce nie wykrywało tego scenariusza.
+- Poprawka używa nazw zasobów zależnych od zawartości i automatycznych testów
+  przeglądarkowych, uruchamianych również przed publikacją.
+- Przegląd 181 lokalnie dostępnych obiektów historycznych nie znalazł formatów
+  poświadczeń rozpoznawanych przez kontrolę projektu. To nie pełny audyt.
+- Brak eksperckiej walidacji odpowiedzi prawnych, pełnego korpusu i potwierdzonej
+  kopii poza VPS pozostaje ograniczeniem projektu.
+
+## Historia: początkowe sprawdzenia wersji 0.1
 
 Data: 2026-10-03. Środowisko robocze, **nie docelowy VPS**.
 

@@ -74,6 +74,8 @@ function dateText(value) { return value ? new Date(value).toLocaleDateString('pl
 async function loadStatus() {
   serviceReady = false;
   $('#refresh-status').disabled = true;
+  $('#lab-refresh').disabled = true;
+  $('#lab-connection-status').textContent = 'Sprawdzamy dostępność modelu…';
   $('#service-label').textContent = 'Sprawdzamy połączenie…';
   $('#service-dot').className = 'connection-dot';
   try {
@@ -147,6 +149,8 @@ async function loadStatus() {
     renderSources(sourceFallback);
   } finally {
     $('#refresh-status').disabled = false;
+    $('#lab-refresh').disabled = false;
+    $('#lab-connection-status').textContent = !serviceReady ? 'Brak połączenia z aplikacją. Spróbuj ponownie.' : modelEnabled ? 'BASAL jest włączony. Uruchom przykład, aby sprawdzić rzeczywistą odpowiedź.' : 'Ta instalacja działa bez modelu. Przykłady można przeczytać, ale test jest niedostępny.';
     $('#run-benchmark').disabled = !serviceReady || !modelEnabled || intakeBusy;
     if (!serviceReady || !modelEnabled) feedback('#benchmark-feedback', serviceReady ? 'Ta instalacja działa bez modelu. Możesz nadal przygotować notatkę, wybierając dziedzinę samodzielnie.' : 'Najpierw sprawdź połączenie z aplikacją nad pracownią.');
     else if (!measurements.rows().some(row => row.sampleId)) feedback('#benchmark-feedback', '');
@@ -329,6 +333,8 @@ async function measuredIntake(payload, sample = null) {
 }
 $('#download-metrics').addEventListener('click', () => downloadText('prawo-otwarte-pomiary.json', JSON.stringify({schema:'prawo-otwarte/session-metrics/v1', exportedAt:new Date().toISOString(), scope:'Current browser tab; last 50 intakes; no case content', timing:'Browser round-trip, not model inference time', benchmark:'Synthetic pilot v1; labels not expert-reviewed; repetitions count', legalCorrectness:'not_evaluated', summary:measurements.summary(), measurements:measurements.rows()}, null, 2)));
 $('#clear-metrics').addEventListener('click', () => { measurements.clear(); renderMeasurements(); feedback('#benchmark-feedback', ''); feedback('#metrics-feedback', 'Pomiary usunięto. Nowe oceny będą dostępne przy kolejnej notatce.'); document.querySelectorAll('.rating-controls button').forEach(button => button.disabled = true); });
+$('#benchmark-case').replaceChildren();
+$('#benchmark-case').disabled = false;
 for (const sample of sampleCases) { const option = element('option', sample.label); option.value = sample.id; $('#benchmark-case').append(option); }
 function showBenchmarkCase() {
   const sample = sampleCases.find(item => item.id === $('#benchmark-case').value);
@@ -434,10 +440,13 @@ $('#intake-form').addEventListener('submit', async event => {
 renderMeasurements();
 $('#publication-year').max = String(new Date().getFullYear());
 let statusReady = loadStatus();
-$('#refresh-status').addEventListener('click', () => { statusReady = loadStatus(); });
+for (const id of ['refresh-status','lab-refresh']) $('#' + id).addEventListener('click', () => { if (!$('#refresh-status').disabled) statusReady = loadStatus(); });
 document.querySelectorAll('[data-domain]').forEach(button => button.addEventListener('click', async () => {
   await statusReady;
   setTab('intake'); $('#domain').value = button.dataset.domain; descriptionChanged();
   $('#pracownia').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
   $('#description').focus({preventScroll:true});
 }));
+
+$('#build-label').textContent = 'Wydanie: ' + ($('meta[name="prawo-build"]')?.content || 'lokalne');
+document.documentElement.dataset.appReady = 'true';

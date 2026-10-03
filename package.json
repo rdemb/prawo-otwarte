@@ -1,0 +1,13 @@
+{
+  "name": "prawo-otwarte-browser-tests",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Development-only browser regression tests; no frontend runtime dependencies",
+  "scripts": {
+    "test": "node --test tests/metrics.test.cjs",
+    "test:browser": "node --test tests/browser.test.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

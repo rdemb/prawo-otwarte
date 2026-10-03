@@ -62,9 +62,12 @@ może pobrać je do pliku. Rok w filtrze jest rokiem publikacji, nie datą obowi
 Workflow `Publish website` buduje stronę po zmianach na `main`. Dla własnej kopii repo ustaw
 w [Settings → Pages](https://github.com/rdemb/prawo-otwarte/settings/pages)
 **Build and deployment → Source → GitHub Actions**. Następnie uruchom workflow
-lub ponów nieudane wdrożenie w Actions. Nie potrzeba dodatkowego tokenu ani domeny.
+jako nowe uruchomienie w Actions. Ponowienie samego zadania budowania w starym
+uruchomieniu może pozostawić zduplikowany artefakt Pages. Nie potrzeba dodatkowego tokenu ani domeny.
 
-Publikowanych jest tylko osiem plików przygotowanych w `_site/`. Katalog repo,
+Publikowany jest tylko jawny zestaw zasobów przygotowanych w `_site/`.
+CSS, JavaScript i konfiguracja mają nazwy zależne od zawartości, aby aktualizacje
+nie mieszały nowych widoków ze starymi plikami w pamięci przeglądarki. Katalog repo,
 kod serwera, dokumentacja wdrożenia i dane nie są przesyłane jako strona.
 
 ```bash
