@@ -31,8 +31,10 @@ równoległe importy, ograniczenia zasobów i przerwę między partiami.
 
 Import jest idempotentny według identyfikatora ELI. Sprawdza zakres, powtórzenia
 na stronie oraz liczbę unikalnych lokalnych rekordów po zakończeniu rocznika.
-Rozbieżność zatrzymuje partię i wymaga rekonsyliacji identyfikatorów z ELI;
-sam offset nie potwierdza kompletności. Nie usuwaj aktów automatycznie.
+Rozbieżność zatrzymuje partię i zeruje punkt wznowienia rocznika. Następne
+wywołanie ponawia jego enumerację od początku. Utrzymująca się rozbieżność
+wymaga rekonsyliacji identyfikatorów z ELI; sam offset nie potwierdza kompletności.
+Nie usuwaj aktów automatycznie.
 
 **To pierwsza enumeracja metadanych, nie usługa aktualizacji ani import tekstów.**
 Zakończone roczniki są pomijane. Nowe publikacje i zmiany w starych aktach wymagają

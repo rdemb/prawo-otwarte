@@ -37,9 +37,10 @@ def sync_catalog(store, client, *, publisher=None, max_pages=10, pause=1, sleep=
                     distinct = db.execute("SELECT COUNT(*) FROM acts WHERE publisher=? AND year=?",
                                           (group["publisher"], year)).fetchone()[0]
                 complete = reached_end and distinct == total
-                store.checkpoint(scope, offset, total, complete)
+                resume_offset = 0 if reached_end and not complete else offset
+                store.checkpoint(scope, resume_offset, total, complete)
                 used += 1
-                yield {"scope":scope, "next_offset":offset, "reported_total":total,
+                yield {"scope":scope, "next_offset":resume_offset, "page_end_offset":offset, "reported_total":total,
                        "local_distinct":distinct, "enumeration_finished":complete,
                        "reconciliation_required":reached_end and not complete,
                        "pages_this_run":used, "texts_imported":0, "complete_polish_law":False}

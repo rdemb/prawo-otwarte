@@ -42,6 +42,9 @@ class CatalogTests(unittest.TestCase):
             store=Store(folder);client=Client();client.pages[('DU',2026,1)]=[item('DU/2026/1')]
             with self.assertRaises(SourceError):list(sync_catalog(store,client,sleep=lambda _:None))
             self.assertFalse(store.status()['imports'][0]['completed'])
+            self.assertEqual(store.offset('DU/2026'),0)
+            client.pages[('DU',2026,1)]=[item('DU/2026/2')]
+            self.assertTrue(list(sync_catalog(store,client,publisher='DU',sleep=lambda _:None))[-1]['enumeration_finished'])
 
     def test_wrong_scope_does_not_advance_checkpoint_or_write_items(self):
         with tempfile.TemporaryDirectory() as folder:

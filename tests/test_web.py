@@ -55,6 +55,12 @@ class WebTests(unittest.TestCase):
         for path in ['/../../etc/passwd','/.env','/data/catalog.sqlite3','/AGENTS.md','/api/admin/delete']:
             self.assertEqual(self.call(path)[0],404)
 
+    def test_local_font_is_served_from_explicit_allowlist(self):
+        code,headers,body = self.call('/onest-latin.ttf')
+        self.assertEqual(code,200)
+        self.assertTrue(headers['Content-Type'].startswith('font/ttf'))
+        self.assertEqual(body,(Path(__file__).parents[1]/'prawo/static/onest-latin.ttf').read_bytes())
+
     def test_cross_origin_request_rejected(self):
         self.assertEqual(self.call('/api/intake',{},HTTP_ORIGIN='https://evil.example')[0],403)
 
