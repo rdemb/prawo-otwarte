@@ -1,0 +1,8 @@
+[
+  {"id":"eli-du","name":"Dziennik Ustaw","provider":"ELI · Kancelaria Sejmu","url":"https://eli.gov.pl/eli/DU","stage":"connected","scope":"Metadane, dostępny HTML i relacje między aktami. Import uruchamiany przez administratora."},
+  {"id":"eli-mp","name":"Monitor Polski","provider":"ELI · Kancelaria Sejmu","url":"https://eli.gov.pl/eli/MP","stage":"connected","scope":"Metadane i dostępne teksty; zakres prawny dokumentów wymaga rozróżnienia."},
+  {"id":"local-law","name":"Prawo miejscowe","provider":"Dzienniki urzędowe województw","url":"https://www.gov.pl/","stage":"planned","scope":"Planowane adaptery poszczególnych dzienników. Brak importu w wersji 0.1."},
+  {"id":"eu","name":"Prawo Unii Europejskiej","provider":"EUR-Lex","url":"https://eur-lex.europa.eu/homepage.html?locale=pl","stage":"planned","scope":"Planowany adapter prawa UE mającego znaczenie dla spraw w Polsce."},
+  {"id":"courts","name":"Orzecznictwo","provider":"Oficjalne bazy sądów","url":"https://orzeczenia.ms.gov.pl/","stage":"planned","scope":"Odrębna warstwa interpretacji. Brak importu i oceny linii orzeczniczych w wersji 0.1."},
+  {"id":"guidance","name":"Objaśnienia urzędowe","provider":"UOKiK i inne organy","url":"https://prawakonsumenta.uokik.gov.pl/","stage":"reference","scope":"Odsyłacze do pomocy i materiałów urzędowych. Nie są automatycznie traktowane jak przepisy."}
+]

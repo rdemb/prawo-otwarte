@@ -1,0 +1,36 @@
+[Unit]
+Description=Prawo Otwarte application (pilot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=prawo
+Group=prawo
+WorkingDirectory=/srv/prawo-otwarte
+EnvironmentFile=/etc/prawo-otwarte.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/srv/prawo-otwarte/.venv/bin/gunicorn --bind 127.0.0.1:8080 --workers 1 --threads 4 --timeout 45 --graceful-timeout 45 --error-logfile - --log-level warning prawo.web:create_app()
+Restart=on-failure
+RestartSec=5
+StateDirectory=prawo-otwarte
+StateDirectoryMode=0750
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/prawo-otwarte
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryHigh=1536M
+MemoryMax=2G
+CPUQuota=200%
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target

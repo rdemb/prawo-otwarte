@@ -1,0 +1,9 @@
+# Replace with a domain owned by the operator; validate DNS and existing proxy first.
+prawo.example.org {
+    encode zstd gzip
+    request_body {
+        max_size 20KB
+    }
+    reverse_proxy 127.0.0.1:8080
+    # Access logging intentionally not enabled. Never log case bodies.
+}

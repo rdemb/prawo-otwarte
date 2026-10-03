@@ -1,0 +1,2 @@
+# Production WSGI server, verified against PyPI on 2026-10-03.
+gunicorn==26.2.0
