@@ -49,9 +49,38 @@ od tego załącznika. Wstęp obwieszczenia pozostaje w pełnym tekście i snapsh
 ale nie uczestniczy w tym wyszukiwaniu; zawarte tam przepisy przejściowe trzeba
 sprawdzić oddzielnie.
 
-Wyszukiwanie fragmentów używa SQLite FTS5, prefiksów polskich wyrazów i liczby
-różnych dopasowanych terminów oraz ograniczonej premii za kolejność fraz w początku fragmentu. To początkowa metoda leksykalna, bez gwarancji
-kompletności i trafności. Wyniki mogą pomijać wyjątki lub zawierać nietrafne akty.
+Wyszukiwanie używa SQLite FTS5 i metadanych wybranych aktów. Rozpoznanie jawnie
+wskazanego aktu opiera się na jego pierwotnym tytule, a nie tytule obwieszczenia
+lub nazwie innej ustawy wymienionej w jego nowelizacji. Filtr aktu działa przed
+ograniczeniem kandydatów. Odwołanie do artykułu dopasowuje jednostkę redakcyjną,
+nie samo wystąpienie numeru w odesłaniu. Nie ma tabeli wybranych numerów artykułów
+ani gotowych odpowiedzi.
+
+Kilka jawnych rodzin słów łączy odmiany i bliskie pojęcia, np. zwrot/zwracać,
+najem/najmu i mieszkanie/lokal. Pozostałe wyrazy korzystają z prostych prefiksów;
+to nie pełna analiza polskiej fleksji. Do 240 kandydatów jest ocenianych według
+pokrycia różnych pojęć pytania z wagami zależnymi od częstości w indeksie.
+Zbyt małe pokrycie (poniżej 0,60) powoduje pominięcie fragmentu. To heurystyka
+leksykalna, niezależna od progu BASAL-a i niebędąca prawdopodobieństwem poprawności.
+Słowa metapytania i rozpoznanej nazwy aktu nie zastępują jego tematu. Przy remisie
+zachowana jest kolejność BM25, a dalej stabilny identyfikator fragmentu.
+
+Zdanie opisujące zakres ustawy jest preferowane dla pytania o zakres, a obniżane
+dla pytania o regułę. Nie usuwa się globalnie art. 1. Treść wybranego fragmentu,
+jego warunki, daty, hash i pochodzenie pozostają niezmienione. Ogólne pytanie
+o wypowiedzenie/odstąpienie od nieokreślonej umowy zwraca prośbę o rodzaj umowy
+i sposób jej zawarcia (`generation.status=clarification_needed`), bez generowania.
+
+Metoda pozostaje leksykalna, bez gwarancji kompletności i trafności. Może pominąć
+parafrazy, rzadkie odmiany lub wyjątki. Znalezienie przepisu i `supported` nie
+potwierdzają odpowiedzi na pytanie ani zastosowania reguły do sytuacji osoby.
+Ocena użyteczności i zachowania warunków musi być odrębna od kontroli cytatów.
+
+Ranking daje też pierwszeństwo kompletnej jednostce wobec podobnie pasującego
+uciętego bloku. Przepis zaczynający się warunkiem konkretnej daty pozostaje
+dostępny, ale przy pytaniu ogólnym dostaje mniejszą wagę; to nie weryfikacja jego
+obowiązywania. W pytaniu „jak zrobić X o Y” czynność X ma większą wagę niż temat
+tła Y. Te heurystyki wymagają dalszej oceny na innych sformułowaniach pytań.
 
 ## Uruchomienie generatora
 
@@ -117,7 +146,12 @@ Objaśnienie ma cytat 20–350 znaków i jedno zdanie do 300 znaków. Schemat wy
 do runtime ogranicza cytaty do dosłownych, krótkich zdań dostarczonych źródeł,
 powiązanych z ich identyfikatorami. Nie korygujemy po cichu błędnego cytatu modelu.
 Jeżeli nie ma odpowiedniego krótkiego cytatu, model może zwrócić pustą listę.
-Generator nadal widzi pięć fragmentów, ale bez pól technicznych niepotrzebnych do redakcji.
+Generator nadal widzi do pięciu fragmentów, ale bez pól technicznych niepotrzebnych do redakcji.
+Dokładne cytaty w schemacie są porządkowane według pojęć pytania. Dla pytania
+o czas dopuszczane są tylko krótkie zdania zawierające termin lub okres; sama
+miesięczna kwota nie zastępuje terminu. Brak takiego cytatu dopuszcza wyłącznie
+puste claims. To dodatkowe ograniczenie wyboru, nie potwierdzenie zastosowania
+przepisu; walidacja dosłowności i obie kontrole BASAL-a nadal są obowiązkowe.
 Ograniczenie liczby twierdzeń utrzymuje pełny kontekst wybranego fragmentu w
 ograniczonym wejściu kontrolera dowodów. Kontrola istnienia cytatu i próg BASAL-a
 pozostają obowiązkowe. Nawet poprawny JSON może zostać odrzucony. Przykładowy
