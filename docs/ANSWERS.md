@@ -10,9 +10,9 @@ starsza wersja API pozostaje obsługiwana i pokazuje potrzebę aktualizacji.
    Wynik zawiera tekst, ELI, datę pobrania, datę stanu prawnego publikacji (jeśli
    podano) i SHA-256 wyodrębnionego tekstu. Nie jest wygenerowaną poradą.
 2. **Objaśnienie:** opcjonalny lokalny model generatywny, np. Bielik, otrzymuje
-   pytanie i maksymalnie pięć fragmentów. Zwraca najwyżej trzy twierdzenia z
+   pytanie i maksymalnie pięć fragmentów. Zwraca najwyżej jedno krótkie twierdzenie z
    dokładnym cytatem i identyfikatorem dostarczonego źródła. Aplikacja sprawdza
-   istnienie źródła i cytatu. BASAL osobno porównuje objaśnienia, cytaty i ich
+   istnienie źródła i cytatu. BASAL najpierw porównuje objaśnienie z samym cytatem, następnie sprawdza pełny
    kontekst, wybierając `supported`, `unsupported` albo `unclear`.
 
 Objaśnienia są wyświetlane tylko po pozytywnej decyzji BASAL-a osiągającej próg.
@@ -50,7 +50,7 @@ ale nie uczestniczy w tym wyszukiwaniu; zawarte tam przepisy przejściowe trzeba
 sprawdzić oddzielnie.
 
 Wyszukiwanie fragmentów używa SQLite FTS5, prefiksów polskich wyrazów i liczby
-różnych dopasowanych terminów oraz kolejności fraz w początku fragmentu. To początkowa metoda leksykalna, bez gwarancji
+różnych dopasowanych terminów oraz ograniczonej premii za kolejność fraz w początku fragmentu. To początkowa metoda leksykalna, bez gwarancji
 kompletności i trafności. Wyniki mogą pomijać wyjątki lub zawierać nietrafne akty.
 
 ## Uruchomienie generatora
@@ -82,3 +82,56 @@ Eksport pomiarów nie zawiera pytań, odpowiedzi ani cytatów. Przechowuje ostat
 50 prób w pamięci karty: czas całości, czas lokalnego żądania generatora, tryb,
 liczbę źródeł i twierdzeń oraz wynik kontroli BASAL-a. Odświeżenie usuwa pomiary.
 Logi infrastruktury i runtime trzeba osobno sprawdzić na VPS.
+
+## Ograniczanie kolejki lokalnego runtime
+
+`deploy/generator_gateway.py` uruchamia dedykowany proces `llama-server` i przyjmuje
+wyłącznie ograniczony kontrakt aplikacji na loopback. Jeden aktywny POST zajmuje
+miejsce do zakończenia odczytu odpowiedzi, także gdy klient się rozłączy. Następne
+żądanie dostaje HTTP 503. Limit obejmuje również liczbę wątków obsługi i czas
+odczytu żądania. Gdy połączenie z runtime przekroczy timeout, gateway kończy i
+zbiera proces potomny przed zwolnieniem miejsca. Jednostka systemd musi używać
+`KillMode=control-group`, aby restart kończył również proces modelu.
+
+Przed przyjęciem inferencji gateway sprawdza `/health` runtime, utrzymując blokadę
+jednego żądania. Dopóki model się ładuje lub port nie odpowiada, zwraca HTTP 503
+bez restartowania potomka. Dotyczy to także ładowania po awarii: kolejne pytania
+nie mogą przerywać startu modelu. Ta kontrola gotowości nie sprawdza jakości odpowiedzi.
+
+Przykładowe uruchomienie po osobnym pobraniu i weryfikacji binarium oraz wag:
+
+```bash
+python3 deploy/generator_gateway.py --port 8767 --upstream-port 8768 --timeout 115 --model bielik -- \
+  /srv/prawo-generator/llama/llama-server --model /var/lib/prawo-generator/models/model.gguf \
+  --alias bielik --host 127.0.0.1 --port 8768 --ctx-size 8192 --parallel 1 \
+  --n-predict 700 --threads 6 --threads-batch 6 --cache-ram 0 --cache-reuse 0 \
+  --no-webui --no-ui-mcp-proxy --log-disable --timeout 110 --offline
+```
+
+Port upstream nie jest publicznym API. Nie udostępniaj żadnego portu modelu przez
+proxy. Użyj odrębnego konta, limitów RAM/CPU, dostępu sieciowego tylko do loopback
+i wyłączonego zapisu stdout/stderr. Parametry runtime sprawdź dla przypiętej wersji.
+Nie nadpisuj szablonu rozmowy z wag obcym szablonem.
+
+Objaśnienie ma cytat 20–350 znaków i jedno zdanie do 300 znaków. Schemat wysyłany
+do runtime ogranicza cytaty do dosłownych, krótkich zdań dostarczonych źródeł,
+powiązanych z ich identyfikatorami. Nie korygujemy po cichu błędnego cytatu modelu.
+Jeżeli nie ma odpowiedniego krótkiego cytatu, model może zwrócić pustą listę.
+Generator nadal widzi pięć fragmentów, ale bez pól technicznych niepotrzebnych do redakcji.
+Ograniczenie liczby twierdzeń utrzymuje pełny kontekst wybranego fragmentu w
+ograniczonym wejściu kontrolera dowodów. Kontrola istnienia cytatu i próg BASAL-a
+pozostają obowiązkowe. Nawet poprawny JSON może zostać odrzucony. Przykładowy
+proces na CPU nie gwarantuje odpowiedzi dla dowolnego pytania w 90 sekund.
+
+Kontrola dowodów przekazuje BASAL-owi polskie pola „Kontekst źródła”, „Cytat” i
+„Twierdzenie do sprawdzenia”. Opcje opisują potwierdzenie, sprzeczność i brak
+podstaw; `option_keys=hide` ukrywa techniczne identyfikatory w tekście opcji, nie
+zmienia ich w odpowiedzi API. Klasyfikacja dziedziny zachowuje dotychczasowy
+kontrakt. Próg 0,80, wagi i kalibracja runtime nie są zmieniane przez aplikację.
+Obsługę `option_keys` trzeba potwierdzić na zainstalowanym serwerze BASAL.
+
+Obie kontrole BASAL-a muszą zwrócić supported powyżej progu i dzielą jeden
+budżet czasu. Treść z innego miejsca kontekstu nie może zastąpić podstawy
+w przypisanym cytacie. Urwane objaśnienia są odrzucane. Podanie daty sprawy
+wyłącza generowanie: aplikacja pokazuje źródła i informację, że nie odtworzono
+wersji prawa dla tej daty.

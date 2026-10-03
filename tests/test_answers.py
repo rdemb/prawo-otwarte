@@ -5,9 +5,9 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
 
-from prawo.answers import AnswerEngine, validate_claims
+from prawo.answers import AnswerEngine, validate_claims, citation_schema
 from prawo.cases import BasalRouter, DOMAINS
-from prawo.evidence import retrieve
+from prawo.evidence import retrieve, relevance
 from prawo.settings import Settings
 from prawo.sources import SourceError
 from prawo.store import Store
@@ -56,11 +56,11 @@ class AnswersTests(unittest.TestCase):
         def fetcher(url,**kwargs):
             calls.append((url,json.loads(kwargs['body'])))
             return self.generated()
-        data=self.engine(fetcher,generator_enabled=True).answer('Pytanie o reklamację', '2020-01-01')
+        data=self.engine(fetcher,generator_enabled=True).answer('Pytanie o reklamację')
         self.assertEqual(data['mode'],'draft'); self.assertEqual(len(data['claims']),1)
         self.assertEqual(calls[0][0],'http://127.0.0.1:8767/v1/chat/completions')
         self.assertEqual(calls[0][1]['max_tokens'],700)
-        self.assertFalse(data['temporal_verified']); self.assertEqual(data['event_date'],'2020-01-01')
+        self.assertFalse(data['temporal_verified']); self.assertEqual(data['event_date'],'')
 
     def test_fabricated_citation_or_unfinished_output_never_published(self):
         for raw in [self.generated([{'source_id':'S99','quote':'Nieistniejący cytat testowy.','explanation':'Fałszywe objaśnienie testowe.'}]),self.generated(finish='length'),b'not json']:
@@ -117,3 +117,80 @@ class AnswersTests(unittest.TestCase):
         self.store.set_text('DU/2020/1',self.body,self.body.encode(),'official',kind='html')
         self.assertEqual(retrieve(self.store,'reklamacja'),[])
         self.assertEqual(self.store.status()['answer_source_count'],0)
+
+    def test_distinct_concepts_outweigh_repeated_form_heading(self):
+        tokens=['termin','zwrot','umow','towar']
+        form='Termin zwrotu umowy. Termin zwrotu umowy. Termin zwrotu umowy.'
+        article='Towar objęty umową można oddać; zwrot następuje w terminie wskazanym w piśmie.'
+        self.assertGreater(relevance(article,tokens),relevance(form,tokens))
+
+    def test_generator_has_date_and_context_without_technical_metadata(self):
+        calls=[]
+        def fetcher(url,**kwargs):
+            calls.append(json.loads(kwargs['body']))
+            return self.generated()
+        self.engine(fetcher,generator_enabled=True).answer('Pytanie o reklamację')
+        message=json.loads(calls[0]['messages'][1]['content'])
+        self.assertEqual(message['event_date'],'')
+        self.assertEqual(set(message['sources'][0]),{'id','label','text'})
+        self.assertEqual(calls[0]['response_format']['schema']['properties']['claims']['maxItems'],1)
+
+    def test_multiple_claims_or_quote_absent_from_valid_source_are_rejected(self):
+        claim={'source_id':'S1','quote':'Syntetyczny przepis testowy o zakupach i reklamacji towaru.',
+               'explanation':'Fragment wspomina zakupy i reklamację towaru.'}
+        for claims in [[claim,claim],[dict(claim,quote='Nieobecny cytat przypisany do istniejącego źródła.')]]:
+            data=self.engine(lambda *a,**k:self.generated(claims),generator_enabled=True).answer('Pytanie o reklamację')
+            self.assertEqual(data['mode'],'excerpts')
+            self.router.check_evidence.assert_not_called()
+
+    def test_evidence_contract_preserves_context_and_hides_transport_labels(self):
+        requests=[]
+        def fetcher(url,**kw):
+            requests.append(json.loads(kw['body']))
+            return json.dumps({'answers':{'evidence':{'choice':'supported',
+                'probabilities':{'supported':.79,'unsupported':.11,'unclear':.1}}}}).encode()
+        router=BasalRouter(replace(self.settings,basal_enabled=True),fetcher=fetcher)
+        result=router.check_evidence([{'source_context':'Pełny kontekst ze zastrzeżeniem.',
+                                      'quote':'Dokładny cytat testowy.', 'explanation':'Objaśnienie testowe.'}])
+        self.assertEqual(result['verdict'],'unclear')
+        self.assertEqual(result['threshold'],.8)
+        self.assertNotIn('Pełny kontekst ze zastrzeżeniem.',requests[0]['state'])
+        self.assertEqual(requests[0]['questions']['evidence']['option_keys'],'hide')
+
+    def test_quote_and_context_both_required_and_share_timeout(self):
+        calls=[]
+        def fetcher(url,**kw):
+            calls.append(kw)
+            scores={'supported':.9,'unsupported':.05,'unclear':.05} if len(calls)==1 else {'supported':.1,'unsupported':.85,'unclear':.05}
+            return json.dumps({'answers':{'evidence':{'choice':max(scores,key=scores.get),'probabilities':scores}}}).encode()
+        router=BasalRouter(replace(self.settings,basal_enabled=True,basal_timeout=30),fetcher=fetcher)
+        result=router.check_evidence([{'quote':'Syntetyczny cytat testowy.', 'explanation':'Syntetyczne twierdzenie.',
+                                      'source_context':'Pełny kontekst ze zastrzeżeniem.'}])
+        self.assertEqual(result['verdict'],'unsupported')
+        self.assertEqual([c['phase'] for c in result['checks']],['quote','context'])
+        self.assertIn('Pełny kontekst ze zastrzeżeniem.',json.loads(calls[1]['body'])['state'])
+        self.assertLess(calls[1]['timeout'],calls[0]['timeout'])
+        self.assertLessEqual(calls[0]['timeout'],30)
+
+    def test_copying_schema_pairs_exact_quotes_with_their_source(self):
+        sources=[{'id':'S1','text':'Pierwszy syntetyczny przepis. Drugi syntetyczny przepis.'},
+                 {'id':'S2','text':'Odrębny syntetyczny przepis.'}]
+        variants=citation_schema(sources)['properties']['claims']['items']['oneOf']
+        for source,item in zip(sources,variants):
+            self.assertEqual(item['properties']['source_id']['enum'],[source['id']])
+            self.assertTrue(all(q in source['text'] for q in item['properties']['quote']['enum']))
+        self.assertEqual(citation_schema([{'id':'S1','text':'x'*400}])['properties']['claims']['maxItems'],0)
+
+    def test_incomplete_explanation_is_not_published(self):
+        raw=self.generated([{'source_id':'S1','quote':'Syntetyczny przepis testowy o zakupach i reklamacji towaru.',
+                             'explanation':'Urwane objaśnienie bez końca zdania'}])
+        data=self.engine(lambda *a,**k:raw,generator_enabled=True).answer('Pytanie o reklamację')
+        self.assertEqual(data['mode'],'excerpts')
+        self.router.check_evidence.assert_not_called()
+
+    def test_dated_case_only_returns_sources_without_reconstructing_history(self):
+        data=self.engine(generator_enabled=True).answer('Pytanie o reklamację','2001-01-01')
+        self.assertEqual(data['mode'],'excerpts')
+        self.assertEqual(data['generation']['status'],'date_unverified')
+        self.assertEqual(data['event_date'],'2001-01-01')
+        self.router.check_evidence.assert_not_called()

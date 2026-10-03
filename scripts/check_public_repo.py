@@ -23,7 +23,7 @@ def inspect(path, content):
         findings.append("private file category")
     if name.name.startswith(".env.") and name.name != ".env.example":
         findings.append("local environment configuration")
-    if re.search(r"raport[-_]vps|codex.*prompt|prompt.*codex|code[x_].*migracj",name.name,re.I):
+    if re.search(r"raport[-_]vps|codex.*prompt|prompt.*codex|code[x_].*migracj|^PO_\d+_(?:REPORT|PROGRESS|CODEX)",name.name,re.I):
         findings.append("private operations material")
     if any(pattern.search(content) for pattern in SECRET_PATTERNS):
         findings.append("credential pattern")
