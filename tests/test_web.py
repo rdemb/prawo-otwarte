@@ -122,3 +122,19 @@ class BasalTests(unittest.TestCase):
     def test_model_url_cannot_be_remote_or_include_credentials(self):
         for url in ['https://api.example.com','http://localhost:8766','http://127.0.0.1.evil.com','http://user:pass@127.0.0.1:8766','http://127.0.0.1:8766/other']:
             with self.subTest(url=url),self.assertRaises(ValueError): BasalRouter(Settings(Path('.'),basal_url=url))
+
+    def test_model_timeout_stays_within_browser_budget(self):
+        for timeout in [0, -1, 31, float('inf'), float('nan')]:
+            with self.subTest(timeout=timeout), self.assertRaises(ValueError):
+                BasalRouter(Settings(Path('.'), basal_timeout=timeout))
+        self.assertEqual(BasalRouter(Settings(Path('.'), basal_timeout=30)).settings.basal_timeout, 30)
+
+    def test_timeout_returns_manual_fallback_and_releases_client_slot(self):
+        observed = []
+        def unavailable(*args, **kwargs):
+            observed.append(kwargs['timeout'])
+            raise SourceError('model request timed out')
+        router = BasalRouter(Settings(Path('.'), basal_enabled=True, basal_timeout=30), fetcher=unavailable)
+        for _ in range(2):
+            self.assertEqual(router.classify('syntetyczny opis')['method'], 'unavailable')
+        self.assertEqual(observed, [30, 30])
