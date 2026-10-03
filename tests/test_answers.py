@@ -7,7 +7,7 @@ from unittest.mock import Mock
 
 from prawo.answers import AnswerEngine, validate_claims, citation_schema
 from prawo.cases import BasalRouter, DOMAINS
-from prawo.evidence import retrieve, relevance
+from prawo.evidence import retrieve
 from prawo.settings import Settings
 from prawo.sources import SourceError
 from prawo.store import Store
@@ -119,10 +119,11 @@ class AnswersTests(unittest.TestCase):
         self.assertEqual(self.store.status()['answer_source_count'],0)
 
     def test_distinct_concepts_outweigh_repeated_form_heading(self):
-        tokens=['termin','zwrot','umow','towar']
-        form='Termin zwrotu umowy. Termin zwrotu umowy. Termin zwrotu umowy.'
-        article='Towar objęty umową można oddać; zwrot następuje w terminie wskazanym w piśmie.'
-        self.assertGreater(relevance(article,tokens),relevance(form,tokens))
+        form='Art. 101. Termin zwrotu umowy. Termin zwrotu umowy. Termin zwrotu umowy.'
+        article='Art. 102. Towar objęty umową można oddać; zwrot następuje w terminie wskazanym w piśmie.'
+        body=form+'\n'+article
+        self.store.set_text('DU/2020/1',body,body.encode(),'synthetic',kind='pdf')
+        self.assertEqual(retrieve(self.store,'Termin zwrotu umowy towaru')[0]['label'],'Art. 102.')
 
     def test_generator_has_date_and_context_without_technical_metadata(self):
         calls=[]
@@ -187,6 +188,18 @@ class AnswersTests(unittest.TestCase):
         data=self.engine(lambda *a,**k:raw,generator_enabled=True).answer('Pytanie o reklamację')
         self.assertEqual(data['mode'],'excerpts')
         self.router.check_evidence.assert_not_called()
+
+    def test_time_question_cannot_replace_deadline_with_monthly_amount(self):
+        source={'id':'S1','text':'Zwrot odpowiada kwocie miesięcznej stawki syntetycznej. '
+                'Zwrot następuje w ciągu pięciu dni po zakończeniu testowej kontroli.'}
+        schema=citation_schema([source],'Kiedy następuje zwrot?')
+        quotes=schema['properties']['claims']['items']['oneOf'][0]['properties']['quote']['enum']
+        self.assertEqual(quotes,['Zwrot następuje w ciągu pięciu dni po zakończeniu testowej kontroli.'])
+        self.assertIn(quotes[0],source['text'])
+
+    def test_no_short_time_evidence_only_allows_abstention(self):
+        source={'id':'S1','text':'Syntetyczna reguła określa wyłącznie kwotę należności.'}
+        self.assertEqual(citation_schema([source],'Jaki jest termin?')['properties']['claims']['maxItems'],0)
 
     def test_dated_case_only_returns_sources_without_reconstructing_history(self):
         data=self.engine(generator_enabled=True).answer('Pytanie o reklamację','2001-01-01')
