@@ -8,7 +8,7 @@ from prawo.cases import DOMAINS
 from prawo.settings import public_https_origin
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_FILES = ("index.html", "style.css", "app.js", "favicon.svg", "pages.js")
+PUBLIC_FILES = ("index.html", "style.css", "app.js", "metrics.js", "favicon.svg", "pages.js")
 
 
 def build(destination, api_base_url=""):
