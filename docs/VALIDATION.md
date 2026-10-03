@@ -57,3 +57,29 @@ Izolowana przeglądarka testowa wymagała pominięcia lokalnego błędu magazynu
 certyfikatów; kod strony nie wyłącza TLS. Niezależne połączenie curl z ELI
 przeszło weryfikację certyfikatu. Stan publicznego wdrożenia należy sprawdzić
 osobno w workflow `Publish website` po włączeniu GitHub Pages.
+
+## Rozbudowa publicznej pracowni — 2026-10-03
+
+- 30 testów offline: PASS, w tym filtry/stronicowanie API i reguły publikacji.
+- Testy przeglądarki desktop 1440×1000 oraz mobile 390×844 i 320×844: PASS.
+- Rzeczywiste ELI dla frazy „ustawa”, DU, rok publikacji 2025: strony 1–20
+  oraz 21–40 z 220 wyników w chwili sprawdzenia. Parametry potwierdzone w żądaniach.
+- Dodanie dwóch aktów z różnych stron, eksport z tytułami/ELI/oficjalnymi URL,
+  usunięcie pozycji i wyczyszczenie stanu po odświeżeniu: PASS.
+- Wejście przez kartę tematyczną do formularza z wybraną dziedziną: PASS.
+- Syntetyczny opis sprawy nie wystąpił w żądaniach sieciowych; brak błędów JS
+  i poziomego przepełnienia widoku na obu szerokościach mobilnych.
+- Sprawdzono wygląd całej strony, sekcji BASAL i widoku mobilnego.
+- Kontrola bieżących śledzonych plików pod kątem zdefiniowanych kategorii
+  prywatnych i formatów poświadczeń: PASS. Dodatkowy przegląd lokalnie dostępnych
+  historycznych blobów nie wykrył tych formatów poświadczeń. Nie jest to pełny audyt.
+
+Usunięto dodatkowy workflow publikujący katalog repozytorium w całości.
+Jedynym procesem publikacji jest `Publish website` z wynikiem buildera `_site`.
+Przed publikacją działa teraz również kontrola publicznych plików.
+Instrukcje agenta usunięto z bieżącej wersji w poprzedniej zmianie; historii Git
+nie przepisywano. Nie wykryto w nich poświadczeń wskazaną kontrolą wzorców.
+
+Sekcja BASAL opisuje rolę i autorstwo technologii na podstawie źródeł autora.
+Nie jest dowodem uruchomienia modelu. VPS i jego prace wdrożeniowe nie były
+w tej zmianie obsługiwane z tego środowiska.

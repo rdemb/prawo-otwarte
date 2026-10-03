@@ -15,4 +15,16 @@ agents.md
 CLAUDE.md
 .agents/
 .codex/
+.ssh/
+.env.*
+!.env.example
+uploads/
+backups/
+private/
+*.safetensors
+*.gguf
+*.db
+*.key
+*.p12
+raport-vps*
 .DS_Store
