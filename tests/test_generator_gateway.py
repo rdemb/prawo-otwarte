@@ -14,10 +14,13 @@ class ControlledRuntime:
         self.finish = threading.Event()
         self.restarted = threading.Event()
         self.fail = False
+        self.health_status = 200
 
     def call(self, path, body=None, timeout=None):
         if path == '/health':
-            return 200, b'{}'
+            if self.health_status is None:
+                raise ConnectionRefusedError()
+            return self.health_status, b'{}'
         self.entered.set()
         if not self.finish.wait(5):
             raise RuntimeError('test failed to release runtime')
@@ -29,6 +32,7 @@ class ControlledRuntime:
         # Admission must remain occupied while termination/reaping happens.
         assert not self.lock.acquire(blocking=False)
         self.restarted.set()
+        self.health_status = None
 
 
 class GatewayTests(unittest.TestCase):
@@ -78,6 +82,32 @@ class GatewayTests(unittest.TestCase):
         self.assertTrue(self.runtime.restarted.is_set())
         self.assertTrue(self.runtime.lock.acquire(timeout=2))
         self.runtime.lock.release()
+
+    def assert_loading_preserves_runtime_and_recovers(self):
+        self.runtime.restarted.clear()
+        self.runtime.entered.clear()
+        # Both the not-yet-listening and model-loading phases reject traffic
+        # without restarting, even when more requests arrive before readiness.
+        for status in (None, None, 503, 503):
+            self.runtime.health_status = status
+            self.assertEqual(self.request(), (503, b'{"error":"generator_loading"}'))
+            self.assertFalse(self.runtime.restarted.is_set())
+            self.assertFalse(self.runtime.entered.is_set())
+        self.runtime.health_status = 200
+        self.runtime.fail = False
+        self.runtime.finish.set()
+        self.assertEqual(self.request()[0], 200)
+        self.assertTrue(self.runtime.entered.is_set())
+
+    def test_startup_traffic_does_not_restart_loading_model(self):
+        self.assert_loading_preserves_runtime_and_recovers()
+
+    def test_traffic_after_timeout_does_not_restart_replacement_model(self):
+        self.runtime.fail = True
+        self.runtime.finish.set()
+        self.assertEqual(self.request()[0], 503)
+        self.assertTrue(self.runtime.restarted.is_set())
+        self.assert_loading_preserves_runtime_and_recovers()
 
     def test_rejects_tools_history_streaming_and_unbounded_output(self):
         for change in [{'tools':[]},{'stream':True},{'max_tokens':701},{'model':'other'},

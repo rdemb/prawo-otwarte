@@ -147,6 +147,15 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError()
             except (ValueError, KeyError, TypeError, AttributeError, OSError):
                 return self.reply(400, b'{"error":"invalid_request"}')
+            # Popen does not mean the model is ready. Probe while holding admission
+            # so startup and post-restart traffic cannot repeatedly kill a loading
+            # child. Only failures of an admitted inference trigger termination.
+            try:
+                status, _ = runtime.call('/health', timeout=1)
+                if status != 200:
+                    return self.reply(503, b'{"error":"generator_loading"}')
+            except (OSError, http.client.HTTPException, ValueError):
+                return self.reply(503, b'{"error":"generator_loading"}')
             try:
                 code, result = runtime.call('/v1/chat/completions', raw)
                 self.reply(code, result if code == 200 else b'{"error":"generation_failed"}')

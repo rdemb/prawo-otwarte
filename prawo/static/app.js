@@ -113,15 +113,27 @@ async function loadStatus() {
         ? 'Ta instalacja ma włączony lokalny BASAL do proponowania dziedziny. Przy awarii lub niejednoznacznym wyniku możesz wybrać dziedzinę samodzielnie. Klasyfikacja nie jest opinią prawną.'
         : 'Klasyfikacja przez model jest wyłączona w tej instalacji. Wybierz dziedzinę samodzielnie; wyszukiwanie i notatka pozostają dostępne.';
       $('#model-connection-note').textContent = modelNote;
-      $('#faq-model-copy').textContent = modelNote;
+      const answerNote = status.source_answers === true
+        ? (status.generative_answers === true
+          ? ' W „Zapytaj źródła” osobny lokalny model przygotowuje krótkie objaśnienie, a BASAL sprawdza jego zgodność z cytatem i kontekstem. Brak potwierdzenia pozostawia same fragmenty. Nie jest to ocena poprawności prawnej.'
+          : ' W „Zapytaj źródła” dostępne są fragmenty zaimportowanych publikacji, bez generowania objaśnień.')
+        : '';
+      $('#faq-model-copy').textContent = modelNote + answerNote;
+      $('#method-model-copy').textContent = modelNote + answerNote;
       $('#faq-privacy-copy').textContent = 'Opis obsługuje serwer tej instalacji; przy automatycznym wyborze dziedziny i włączonym BASAL-u także jego lokalny model. Aplikacja nie zapisuje opisu w bazie. Do API Sejmu trafia wyłącznie fraza wyszukiwania i wybrane filtry.';
       $('#intake-form > .micro').textContent = 'Opis trafi do serwera projektu, a przy automatycznym wyborze dziedziny także do lokalnego BASAL-a. Aplikacja nie zapisuje go w bazie. Nie wpisuj danych osobowych.';
       $('#method-privacy-copy').textContent = 'Nie wymagamy konta. Opis jest przetwarzany na serwerze projektu, bez zapisu do bazy aplikacji. Przy automatycznym wyborze dziedziny obsługuje go również lokalny BASAL. Nie wpisuj danych identyfikujących osoby.';
       $('#roadmap-tools-copy').textContent = 'Wyszukiwanie ELI, lokalny katalog, lista źródeł i notatka sprawy. Bez konta. Opis przetwarza serwer projektu.';
       $('#roadmap-model-state').textContent = modelEnabled ? 'DOSTĘPNE W TEJ INSTALACJI' : 'DO URUCHOMIENIA';
       $('#roadmap-model-copy').textContent = modelEnabled ? 'BASAL proponuje dziedzinę sprawy. Wynik może być niejednoznaczny; możesz samodzielnie wybrać dziedzinę. Trafność prawna wymaga dalszych testów.' : modelNote;
+      $('#roadmap-model-copy').textContent += answerNote;
+      if (status.source_answers === true) {
+        const answerPrivacy = ' Pytanie w „Zapytaj źródła” przetwarza serwer projektu oraz włączone lokalne modele: generator objaśnień i BASAL sprawdzający dowody. Aplikacja nie zapisuje treści pytań ani odpowiedzi w bazie.';
+        $('#faq-privacy-copy').textContent += answerPrivacy;
+        $('#method-privacy-copy').textContent += answerPrivacy;
+      }
     }
-    $('#privacy-processing').textContent = $('#intake-form > .micro').textContent;
+    $('#privacy-processing').textContent = status.site_mode === 'static' ? $('#intake-form > .micro').textContent : $('#faq-privacy-copy').textContent;
     if (status.site_mode === 'static') $('#faq-privacy-copy').textContent = $('#privacy-processing').textContent;
     renderSources(status.sources);
     const selectedDomain = $('#domain').value;

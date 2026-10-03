@@ -93,6 +93,11 @@ odczytu żądania. Gdy połączenie z runtime przekroczy timeout, gateway kończ
 zbiera proces potomny przed zwolnieniem miejsca. Jednostka systemd musi używać
 `KillMode=control-group`, aby restart kończył również proces modelu.
 
+Przed przyjęciem inferencji gateway sprawdza `/health` runtime, utrzymując blokadę
+jednego żądania. Dopóki model się ładuje lub port nie odpowiada, zwraca HTTP 503
+bez restartowania potomka. Dotyczy to także ładowania po awarii: kolejne pytania
+nie mogą przerywać startu modelu. Ta kontrola gotowości nie sprawdza jakości odpowiedzi.
+
 Przykładowe uruchomienie po osobnym pobraniu i weryfikacji binarium oraz wag:
 
 ```bash
