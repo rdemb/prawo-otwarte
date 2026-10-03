@@ -179,6 +179,21 @@ Dokumentacja: [zmienne GitHub Actions](https://docs.github.com/en/actions/how-to
 [HTTPS w Caddy](https://caddyserver.com/docs/quick-starts/https),
 [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS).
 
+### Niezależne sprawdzenie publicznego wdrożenia
+
+Niezależny test wdrożenia można uruchomić przez Actions → **Public HTTPS and model
+check** → Run workflow na `main`. Wymaga ustawionej zmiennej repozytorium
+`PRAWO_API_BASE_URL`. Test łączy się bezpośrednio z publicznym API z runnera GitHub,
+weryfikuje łańcuch TLS i nazwę/IP, wypisuje fingerprint oraz termin ważności,
+a następnie sprawdza konfigurację Pages, CORS, ręczny wywiad i jedną syntetyczną
+klasyfikację. Nie zatrzymuje usług, nie zmienia danych i nie ponawia wywołań.
+
+Uruchamia się również po zmianie własnego skryptu lub workflow na `main`.
+Nie działa cyklicznie ani na pull requestach. Zajęty model lub limit ruchu oznacza
+niezaliczony test dostępności w tej chwili, nie automatycznie błąd certyfikatu;
+etapy TLS i API są oddzielne. Jest to test protokołu, nie przeglądarki, obciążenia
+ani trafności prawnej. Wyniki znajdują się w logach poszczególnych kroków.
+
 ### Budżet czasu klasyfikacji na CPU
 
 `PRAWO_BASAL_TIMEOUT` pozostaje domyślnie równy 8 sekund; po pomiarze lokalnego
